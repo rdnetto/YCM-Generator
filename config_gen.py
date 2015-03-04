@@ -14,7 +14,7 @@ import subprocess
 def main():
     # display usage info
     if(len(sys.argv) != 2):
-        print "USAGE: ./config_gen.py PROJECT_DIR"
+        print("USAGE: ./config_gen.py PROJECT_DIR")
         sys.exit(1)
         return
     else:
@@ -70,7 +70,7 @@ def fake_build(project_dir, build_log_path):
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "Makefile"))):
-        print "Running make..."
+        print("Running make...")
 
         # use --ignore-errors, since the makefile may include scripts which
         # depend upon the existence of various output files
@@ -81,7 +81,7 @@ def fake_build(project_dir, build_log_path):
             subprocess.call(args, stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
 
     else:
-        print "ERROR: Unknown build system"
+        print("ERROR: Unknown build system")
         sys.exit(2)
 
     print("Build completed in {} sec".format(round(time.time() - started, 2)))
