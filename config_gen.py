@@ -132,7 +132,7 @@ def parse_flags(build_log, build_log_path):
         if(temp_output.search(line)):
             continue
 
-        words = line.split()
+        words = split_flags(line)
 
         for (i, word) in enumerate(words):
             if(word[0] != '-' or not flags_whitelist.match(word)):
@@ -189,6 +189,40 @@ def generate_conf(flags, config_file):
                     # copy template
                     output.write(line)
 
+
+def split_flags(line):
+    '''Helper method that splits a string into flags.
+    Flags are space-seperated, except for spaces enclosed in quotes.
+    Returns a list of flags'''
+
+    # Pass 1: split line using whitespace
+    words = line.strip().split()
+
+    # Pass 2: merge words so that the no. of quotes is balanced
+    res = []
+
+    for w in words:
+        if(len(res) > 0 and unbalanced_quotes(res[-1])):
+            res[-1] += " " + w
+        else:
+            res.append(w)
+
+    return res
+
+
+def unbalanced_quotes(s):
+    '''Helper method that returns True if the no. of single or double quotes in s is odd.'''
+
+    single = 0
+    double = 0
+
+    for c in s:
+        if(c == "'"):
+            single += 1
+        elif(c == '"'):
+            double += 1
+
+    return (single % 2 == 1 or double % 2 == 1)
 
 
 if(__name__ == "__main__"):
