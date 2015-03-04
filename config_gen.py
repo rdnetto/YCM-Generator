@@ -138,9 +138,9 @@ def parse_flags(build_log, build_log_path):
             if(word[0] != '-' or not flags_whitelist.match(word)):
                 continue
 
-            # include arguments for this option, if there are any
+            # include arguments for this option, if there are any, as a tuple
             if(i != len(words) - 1 and words[i + 1][0] != '-'):
-                flags.add(word + ' ' + words[i + 1])
+                flags.add((word, words[i + 1]))
             else:
                 flags.add(word)
 
@@ -153,7 +153,7 @@ def parse_flags(build_log, build_log_path):
     # Only specify one word size (the largest)
     # (Different sizes are used for different files in the linux kernel.)
     mRegex = re.compile("^-m[0-9]+$")
-    word_flags = list([f for f in flags if mRegex.match(f)])
+    word_flags = list([f for f in flags if isinstance(f, basestring) and mRegex.match(f)])
 
     if(len(word_flags) > 1):
         for flag in word_flags:
@@ -179,7 +179,12 @@ def generate_conf(flags, config_file):
             for line in template:
                 if(line == "    # INSERT FLAGS HERE\n"):
                     # insert generated code
-                    output.writelines("    '{}',\n".format(flag) for flag in flags)
+                    for flag in flags:
+                        if(isinstance(flag, basestring)):
+                            output.write("    '{}',\n".format(flag))
+                        else: #is tuple
+                            output.write("    '{}', '{}',\n".format(*flag))
+
                 else:
                     # copy template
                     output.write(line)
