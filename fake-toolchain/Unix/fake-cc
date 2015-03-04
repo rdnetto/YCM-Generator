@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [[ "$@" == "-v" ]]; then
+    # Needed to enable clang-specific options for certain build systems
+    echo "clang version 3.5.0 (fake toolchain)"
+else
+    echo "$@" >> $YCM_CONFIG_GEN_LOG
+fi
+
