@@ -38,10 +38,13 @@ def parse_flags(build_log):
     # compile the file
     temp_output = re.compile("-S|-E|-x assembler|-o ([a-zA-Z0-9._].tmp)|(/dev/null)")
 
-    # Skip these flags, since they're not relevant
-    ignored_flags = ["-", "-c", "-o", "-g", "-v", "-P", "-W[apl],.*", "-O([0-9sg]|fast)", "-[fmQU].*",
-                     "-print-file-name=.*"]
-    ignored_flags = re.compile("|".join(map("^{}$".format, ignored_flags)))
+    # Flags we want:
+    # -includes (-i, -I)
+    # -defines (-D)
+    # -warnings (-Werror), but no assembler, etc. flags (-Wa,-option)
+    # -language (-std=gnu99) and standard library (-nostdlib)
+    flags_whitelist = ["-[iID].*", "-W[^,]*", "-.*std.*"]
+    flags_whitelist = re.compile("|".join(map("^{}$".format, flags_whitelist)))
     flags = set()
 
     # Process build log
@@ -52,7 +55,7 @@ def parse_flags(build_log):
         words = line.split()
 
         for (i, word) in enumerate(words):
-            if(word[0] != '-' or ignored_flags.match(word)):
+            if(word[0] != '-' or not flags_whitelist.match(word)):
                 continue
 
             # include arguments for this option, if there are any
