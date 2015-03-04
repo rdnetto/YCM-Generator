@@ -6,6 +6,7 @@ import os.path
 import re
 import datetime
 import multiprocessing
+import shutil
 import tempfile
 import time
 import subprocess
@@ -33,7 +34,7 @@ def main():
     config_file = os.path.join(project_dir, ".ycm_extra_conf.py")
 
     if(os.path.exists(config_file)):
-        print("'{}' already exists. Overwrite? [y/N]".format(config_file))
+        print("'{}' already exists. Overwrite? [y/N] ".format(config_file)),
         response = sys.stdin.readline().strip().lower()
 
         if(response != "y" and response != "yes"):
@@ -58,27 +59,43 @@ def fake_build(project_dir, build_log_path):
 
     # TODO: add Windows support
     assert(not sys.platform.startswith("win32"))
-    fake_path = os.path.join(os.path.dirname(__file__), "fake-toolchain", "Unix")
+    fake_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "fake-toolchain", "Unix"))
 
     # environment variables for build process
     started = time.time()
+    FNULL = open(os.devnull, "w")
     env = {"PATH" : "{}:{}".format(fake_path, os.environ["PATH"]),
            "CC" : "clang",
            "CXX" : "clang",
            "YCM_CONFIG_GEN_LOG" : build_log_path,
           }
 
+    # use --ignore-errors, since the makefile may include scripts which
+    # depend upon the existence of various output files
+    make_args = ["make", "--ignore-errors", "-j" + str(multiprocessing.cpu_count())]
+
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "Makefile"))):
         print("Running make...")
+        subprocess.call(["make", "clean"], stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
+        subprocess.call(make_args,         stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
 
-        # use --ignore-errors, since the makefile may include scripts which
-        # depend upon the existence of various output files
-        args = ["make", "--ignore-errors", "-j" + str(multiprocessing.cpu_count())]
+    elif(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
+        # cmake sets compiler options by compiling test files, so we need to
+        # pass-through the options to clang during the config phase
+        env_config = env.copy()
+        env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = "/usr/bin/clang"
 
-        with open(os.devnull, "w") as FNULL:
-            subprocess.call(["make", "clean"], stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
-            subprocess.call(args, stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
+        # run cmake in a temporary directory, then compile the project as usual
+        build_dir = tempfile.mkdtemp()
+        print("Running cmake in '{}'...".format(build_dir))
+        subprocess.call(["cmake", project_dir], stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=build_dir, env=env_config)
+
+        print("Running make...")
+        subprocess.call(make_args,              stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=build_dir, env=env)
+
+        print("Cleaning up...")
+        shutil.rmtree(build_dir)
 
     else:
         print("ERROR: Unknown build system")
