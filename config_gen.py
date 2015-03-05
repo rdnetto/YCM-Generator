@@ -75,12 +75,7 @@ def fake_build(project_dir, build_log_path):
     make_args = ["make", "--ignore-errors", "-j" + str(multiprocessing.cpu_count())]
 
     # execute the build system
-    if(os.path.exists(os.path.join(project_dir, "Makefile"))):
-        print("Running make...")
-        subprocess.call(["make", "clean"], stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
-        subprocess.call(make_args,         stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
-
-    elif(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
+    if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
         # cmake sets compiler options by compiling test files, so we need to
         # pass-through the options to clang during the config phase
         env_config = env.copy()
@@ -96,6 +91,14 @@ def fake_build(project_dir, build_log_path):
 
         print("Cleaning up...")
         shutil.rmtree(build_dir)
+
+    elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
+        # make needs to be handled last, since other build systems can generate Makefiles
+        print("Preparing build directory...")
+        subprocess.call(["make", "clean"],      stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
+
+        print("Running make...")
+        subprocess.call(make_args,              stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
 
     else:
         print("ERROR: Unknown build system")
