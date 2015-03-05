@@ -150,6 +150,8 @@ def parse_flags(build_log, build_log_path):
     flags = set()
     empty_log = True
 
+    # Used to only bundle filenames with applicable arguments
+    filename_flags = ["-o", "-I", "-isystem", "-include"]
 
     # Process build log
     for line in build_log:
@@ -165,7 +167,7 @@ def parse_flags(build_log, build_log_path):
                 continue
 
             # include arguments for this option, if there are any, as a tuple
-            if(i != len(words) - 1 and words[i + 1][0] != '-'):
+            if(i != len(words) - 1 and word in filename_flags and words[i + 1][0] != '-'):
                 flags.add((word, words[i + 1]))
             else:
                 flags.add(word)
