@@ -76,6 +76,9 @@ def fake_build(project_dir, build_log_path):
         "CXX" : "clang",
         "YCM_CONFIG_GEN_LOG" : build_log_path,
     }
+    # used during configuration stage, so that cmake, etc. can verify what the compiler supports
+    env_config = env.copy()
+    env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = "/usr/bin/clang"
 
     # use --ignore-errors, since the makefile may include scripts which
     # depend upon the existence of various output files
@@ -84,11 +87,6 @@ def fake_build(project_dir, build_log_path):
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
         # Cmake
-        # cmake sets compiler options by compiling test files, so we need to
-        # pass-through the options to clang during the config phase
-        env_config = env.copy()
-        env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = "/usr/bin/clang"
-
         # run cmake in a temporary directory, then compile the project as usual
         build_dir = tempfile.mkdtemp()
         proc_opts["cwd"] = build_dir
@@ -101,6 +99,20 @@ def fake_build(project_dir, build_log_path):
 
         print("Cleaning up...")
         shutil.rmtree(build_dir)
+
+    elif(os.path.exists(os.path.join(project_dir, "configure"))):
+        # Autotools
+        # perform build in-tree, since not all projects handle out-of-tree builds correctly
+
+        print("Configuring...")
+        subprocess.call(["./configure"], env=env_config, **proc_opts)
+
+        print("Running make...")
+        subprocess.call(make_args, env=env, **proc_opts)
+
+        print("Cleaning up...")
+        subprocess.call(["make", "maintainer-clean"], env=env, **proc_opts)
+
 
     elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
         # Make
