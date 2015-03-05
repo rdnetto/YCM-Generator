@@ -61,14 +61,21 @@ def fake_build(project_dir, build_log_path):
     assert(not sys.platform.startswith("win32"))
     fake_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "fake-toolchain", "Unix"))
 
-    # environment variables for build process
+    # environment variables and arguments for build process
     started = time.time()
     FNULL = open(os.devnull, "w")
-    env = {"PATH" : "{}:{}".format(fake_path, os.environ["PATH"]),
-           "CC" : "clang",
-           "CXX" : "clang",
-           "YCM_CONFIG_GEN_LOG" : build_log_path,
-          }
+    proc_opts = {
+        "stdin" : FNULL,
+        "stdout" : FNULL,
+        "stderr" : FNULL,
+        "cwd" : project_dir,
+    }
+    env = {
+        "PATH" : "{}:{}".format(fake_path, os.environ["PATH"]),
+        "CC" : "clang",
+        "CXX" : "clang",
+        "YCM_CONFIG_GEN_LOG" : build_log_path,
+    }
 
     # use --ignore-errors, since the makefile may include scripts which
     # depend upon the existence of various output files
@@ -76,6 +83,7 @@ def fake_build(project_dir, build_log_path):
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
+        # Cmake
         # cmake sets compiler options by compiling test files, so we need to
         # pass-through the options to clang during the config phase
         env_config = env.copy()
@@ -83,22 +91,25 @@ def fake_build(project_dir, build_log_path):
 
         # run cmake in a temporary directory, then compile the project as usual
         build_dir = tempfile.mkdtemp()
+        proc_opts["cwd"] = build_dir
+
         print("Running cmake in '{}'...".format(build_dir))
-        subprocess.call(["cmake", project_dir], stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=build_dir, env=env_config)
+        subprocess.call(["cmake", project_dir], env=env_config, **proc_opts)
 
         print("Running make...")
-        subprocess.call(make_args,              stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=build_dir, env=env)
+        subprocess.call(make_args, env=env, **proc_opts)
 
         print("Cleaning up...")
         shutil.rmtree(build_dir)
 
     elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
-        # make needs to be handled last, since other build systems can generate Makefiles
+        # Make
+        # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
-        subprocess.call(["make", "clean"],      stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
+        subprocess.call(["make", "clean"], env=env, **proc_opts)
 
         print("Running make...")
-        subprocess.call(make_args,              stdin=FNULL, stdout=FNULL, stderr=FNULL, cwd=project_dir, env=env)
+        subprocess.call(make_args, env=env, **proc_opts)
 
     else:
         print("ERROR: Unknown build system")
