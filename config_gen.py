@@ -4,6 +4,7 @@ import sys
 import os
 import os.path
 import re
+import argparse
 import datetime
 import multiprocessing
 import shutil
@@ -12,19 +13,25 @@ import time
 import subprocess
 
 
+# The default command used to invoke make
+make_cmd = "make"
+
+
 def main():
-    # display usage info
-    if(len(sys.argv) != 2):
-        print("USAGE: ./config_gen.py PROJECT_DIR")
+    # parse command-line args
+    global make_cmd
+    parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
+    parser.add_argument("-m", "--make", default=make_cmd, help="The name of the make executable.")
+    parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
+    args = vars(parser.parse_args())
+    make_cmd = args["make"]
+    project_dir = os.path.abspath(args["PROJECT_DIR"])
+
+    # verify that project_dir exists
+    if(not os.path.exists(project_dir)):
+        print("ERROR: '{}' does not exist".format(project_dir))
         sys.exit(1)
         return
-    else:
-        project_dir = os.path.abspath(sys.argv[1])
-
-        if(not os.path.exists(project_dir)):
-            print("ERROR: '{}' does not exist".format(project_dir))
-            sys.exit(1)
-            return
 
     # sanity check - remove this after we add Windows support
     if(sys.platform.startswith("win32")):
@@ -82,7 +89,7 @@ def fake_build(project_dir, build_log_path):
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
-    make_args = ["make", "-i", "-j" + str(multiprocessing.cpu_count())]
+    make_args = [make_cmd, "-i", "-j" + str(multiprocessing.cpu_count())]
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
@@ -111,14 +118,14 @@ def fake_build(project_dir, build_log_path):
         subprocess.call(make_args, env=env, **proc_opts)
 
         print("Cleaning up...")
-        subprocess.call(["make", "maintainer-clean"], env=env, **proc_opts)
+        subprocess.call([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
 
     elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
         # Make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
-        subprocess.call(["make", "clean"], env=env, **proc_opts)
+        subprocess.call([make_cmd, "clean"], env=env, **proc_opts)
 
         print("Running make...")
         subprocess.call(make_args, env=env, **proc_opts)
