@@ -80,9 +80,9 @@ def fake_build(project_dir, build_log_path):
     env_config = env.copy()
     env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = "/usr/bin/clang"
 
-    # use --ignore-errors, since the makefile may include scripts which
+    # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
-    make_args = ["make", "--ignore-errors", "-j" + str(multiprocessing.cpu_count())]
+    make_args = ["make", "-i", "-j" + str(multiprocessing.cpu_count())]
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
