@@ -62,7 +62,10 @@ def main():
 
 
 def fake_build(project_dir, build_log_path):
-    '''Builds the project using the fake toolchain, to collect the compiler flags.'''
+    '''Builds the project using the fake toolchain, to collect the compiler flags.
+
+    project_dir: the directory containing the source files
+    build_log_path: the file to log commands to'''
 
     # TODO: add Windows support
     assert(not sys.platform.startswith("win32"))
@@ -139,6 +142,7 @@ def fake_build(project_dir, build_log_path):
 
 def parse_flags(build_log, build_log_path):
     '''Creates a list of compiler flags from the build log.
+
     build_log: an iterator of lines
     Returns: a list of flags'''
 
