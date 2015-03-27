@@ -16,7 +16,8 @@ import subprocess
 def main():
     # parse command-line args
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
-    parser.add_argument("-m", "--make", default="make", help="The name of the make executable.")
+    parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
+    parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
     project_dir = os.path.abspath(args["PROJECT_DIR"])
@@ -60,12 +61,13 @@ def main():
     os.remove(build_log_path)
 
 
-def fake_build(project_dir, build_log_path, make_cmd):
+def fake_build(project_dir, build_log_path, make_cmd, out_of_tree):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
     build_log_path: the file to log commands to
-    make_cmd: the path of the make executable'''
+    make_cmd: the path of the make executable
+    out_of_tree: perform an out-of-tree build (autotools only)'''
 
     # TODO: add Windows support
     assert(not sys.platform.startswith("win32"))
@@ -114,14 +116,24 @@ def fake_build(project_dir, build_log_path, make_cmd):
         # Autotools
         # perform build in-tree, since not all projects handle out-of-tree builds correctly
 
-        print("Configuring...")
-        subprocess.call(["./configure"], env=env_config, **proc_opts)
+        if(out_of_tree):
+            build_dir = tempfile.mkdtemp()
+            proc_opts["cwd"] = build_dir
+            print("Configuring autotools in '{}'...".format(build_dir))
+        else:
+            print("Configuring autotools...")
+
+        subprocess.call([os.path.join(project_dir, "configure")], env=env_config, **proc_opts)
 
         print("Running make...")
         subprocess.call(make_args, env=env, **proc_opts)
 
         print("Cleaning up...")
-        subprocess.call([make_cmd, "maintainer-clean"], env=env, **proc_opts)
+
+        if(out_of_tree):
+            shutil.rmtree(build_dir)
+        else:
+            subprocess.call([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
 
     elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
