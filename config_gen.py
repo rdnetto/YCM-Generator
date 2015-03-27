@@ -16,6 +16,7 @@ import subprocess
 def main():
     # parse command-line args
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
@@ -61,11 +62,12 @@ def main():
     os.remove(build_log_path)
 
 
-def fake_build(project_dir, build_log_path, make_cmd, out_of_tree):
+def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
     build_log_path: the file to log commands to
+    verbose: show the build process output
     make_cmd: the path of the make executable
     out_of_tree: perform an out-of-tree build (autotools only)'''
 
@@ -76,12 +78,12 @@ def fake_build(project_dir, build_log_path, make_cmd, out_of_tree):
     # environment variables and arguments for build process
     started = time.time()
     FNULL = open(os.devnull, "w")
-    proc_opts = {
+    proc_opts = {} if verbose else {
         "stdin" : FNULL,
         "stdout" : FNULL,
-        "stderr" : FNULL,
-        "cwd" : project_dir,
+        "stderr" : FNULL
     }
+    proc_opts["cwd"] = project_dir
     env = {
         "PATH" : "{}:{}".format(fake_path, os.environ["PATH"]),
         "CC" : "clang",
@@ -106,10 +108,10 @@ def fake_build(project_dir, build_log_path, make_cmd, out_of_tree):
         print("Running cmake in '{}'...".format(build_dir))
         subprocess.call(["cmake", project_dir], env=env_config, **proc_opts)
 
-        print("Running make...")
+        print("\nRunning make...")
         subprocess.call(make_args, env=env, **proc_opts)
 
-        print("Cleaning up...")
+        print("\nCleaning up...")
         shutil.rmtree(build_dir)
 
     elif(os.path.exists(os.path.join(project_dir, "configure"))):
@@ -125,10 +127,10 @@ def fake_build(project_dir, build_log_path, make_cmd, out_of_tree):
 
         subprocess.call([os.path.join(project_dir, "configure")], env=env_config, **proc_opts)
 
-        print("Running make...")
+        print("\nRunning make...")
         subprocess.call(make_args, env=env, **proc_opts)
 
-        print("Cleaning up...")
+        print("\nCleaning up...")
 
         if(out_of_tree):
             shutil.rmtree(build_dir)
@@ -142,7 +144,7 @@ def fake_build(project_dir, build_log_path, make_cmd, out_of_tree):
         print("Preparing build directory...")
         subprocess.call([make_cmd, "clean"], env=env, **proc_opts)
 
-        print("Running make...")
+        print("\nRunning make...")
         subprocess.call(make_args, env=env, **proc_opts)
 
     else:
