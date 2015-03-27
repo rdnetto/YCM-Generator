@@ -13,18 +13,12 @@ import time
 import subprocess
 
 
-# The default command used to invoke make
-make_cmd = "make"
-
-
 def main():
     # parse command-line args
-    global make_cmd
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
-    parser.add_argument("-m", "--make", default=make_cmd, help="The name of the make executable.")
+    parser.add_argument("-m", "--make", default="make", help="The name of the make executable.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
-    make_cmd = args["make"]
     project_dir = os.path.abspath(args["PROJECT_DIR"])
 
     # verify that project_dir exists
@@ -52,7 +46,12 @@ def main():
     (build_log, build_log_path) = tempfile.mkstemp(text=True)
     build_log = os.fdopen(build_log, "rw")
 
-    fake_build(project_dir, build_log_path)
+    # pass command-line args to fake_build() using kwargs
+    args["make_cmd"] = args.pop("make")
+    del args["PROJECT_DIR"]
+
+    # perform the actual compilation of flags
+    fake_build(project_dir, build_log_path, **args)
     flags = parse_flags(build_log, build_log_path)
     generate_conf(flags, config_file)
 
@@ -61,11 +60,12 @@ def main():
     os.remove(build_log_path)
 
 
-def fake_build(project_dir, build_log_path):
+def fake_build(project_dir, build_log_path, make_cmd):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
-    build_log_path: the file to log commands to'''
+    build_log_path: the file to log commands to
+    make_cmd: the path of the make executable'''
 
     # TODO: add Windows support
     assert(not sys.platform.startswith("win32"))
