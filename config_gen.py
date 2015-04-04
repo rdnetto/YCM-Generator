@@ -7,6 +7,7 @@ import re
 import argparse
 import datetime
 import multiprocessing
+import shlex
 import shutil
 import tempfile
 import time
@@ -18,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
-    parser.add_argument("-c", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts='--enable-FEATURE'")
+    parser.add_argument("-c", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
@@ -52,6 +53,7 @@ def main():
 
     # pass command-line args to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
+    args["configure_opts"] = shlex.split(args["configure_opts"])
     del args["PROJECT_DIR"]
     del args["output"]
 
@@ -65,14 +67,16 @@ def main():
     os.remove(build_log_path)
 
 
-def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree):
+def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, configure_opts):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
     build_log_path: the file to log commands to
     verbose: show the build process output
     make_cmd: the path of the make executable
-    out_of_tree: perform an out-of-tree build (autotools only)'''
+    out_of_tree: perform an out-of-tree build (autotools only)
+    configure_opts: additional flags for configure stage
+    '''
 
     # TODO: add Windows support
     assert(not sys.platform.startswith("win32"))
@@ -109,7 +113,7 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree):
         proc_opts["cwd"] = build_dir
 
         print("Running cmake in '{}'...".format(build_dir))
-        subprocess.call(["cmake", project_dir], env=env_config, **proc_opts)
+        subprocess.call(["cmake", project_dir] + configure_opts, env=env_config, **proc_opts)
 
         print("\nRunning make...")
         subprocess.call(make_args, env=env, **proc_opts)
@@ -128,7 +132,7 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree):
         else:
             print("Configuring autotools...")
 
-        subprocess.call([os.path.join(project_dir, "configure")], env=env_config, **proc_opts)
+        subprocess.call([os.path.join(project_dir, "configure")] + configure_opts, env=env_config, **proc_opts)
 
         print("\nRunning make...")
         subprocess.call(make_args, env=env, **proc_opts)
