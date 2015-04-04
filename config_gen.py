@@ -18,6 +18,8 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
+    parser.add_argument("-c", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts='--enable-FEATURE'")
+    parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
@@ -34,7 +36,7 @@ def main():
         print("ERROR: Windows is not supported")
 
     # prompt user to overwrite existing file (if necessary)
-    config_file = os.path.join(project_dir, ".ycm_extra_conf.py")
+    config_file = os.path.join(project_dir, ".ycm_extra_conf.py") if args["output"] is None else args["output"]
 
     if(os.path.exists(config_file)):
         print("'{}' already exists. Overwrite? [y/N] ".format(config_file)),
@@ -51,6 +53,7 @@ def main():
     # pass command-line args to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
     del args["PROJECT_DIR"]
+    del args["output"]
 
     # perform the actual compilation of flags
     fake_build(project_dir, build_log_path, **args)
