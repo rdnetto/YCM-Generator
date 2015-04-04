@@ -15,11 +15,14 @@ import subprocess
 
 
 def main():
+    default_make_flags = ["-i", "-j" + str(multiprocessing.cpu_count())]
+
     # parse command-line args
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
     parser.add_argument("-c", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
+    parser.add_argument("-M", "--make-flags", default=default_make_flags, help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
@@ -54,6 +57,7 @@ def main():
     # pass command-line args to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
     args["configure_opts"] = shlex.split(args["configure_opts"])
+    args["make_flags"] = shlex.split(args["make_flags"])
     del args["PROJECT_DIR"]
     del args["output"]
 
@@ -67,7 +71,7 @@ def main():
     os.remove(build_log_path)
 
 
-def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, configure_opts):
+def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, configure_opts, make_flags):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
@@ -76,6 +80,7 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, conf
     make_cmd: the path of the make executable
     out_of_tree: perform an out-of-tree build (autotools only)
     configure_opts: additional flags for configure stage
+    make_flags: additional flags for make
     '''
 
     # TODO: add Windows support
@@ -103,7 +108,7 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, conf
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
-    make_args = [make_cmd, "-i", "-j" + str(multiprocessing.cpu_count())]
+    make_args = [make_cmd] + make_flags
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
