@@ -10,6 +10,10 @@ Run ```./config-gen.py PROJECT_DIRECTORY```, where ```PROJECT_DIRECTORY``` is th
 YCM-Generator can also be used as a Vim plugin. Once installed with Vundle/NeoBundle/etc., use the ```:YcmGenerateConfig``` command to generate a config file for the current directory.
 
 ## Requirements and Limitations
+* Requirements:
+    + Python 2
+    + Clang
+
 * Supported build systems:
     + Make
     + CMake
