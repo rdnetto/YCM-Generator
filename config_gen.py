@@ -106,7 +106,13 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, conf
     }
     # used during configuration stage, so that cmake, etc. can verify what the compiler supports
     env_config = env.copy()
-    env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = "/usr/bin/clang"
+
+    try:
+        env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = subprocess.check_output(["which", "clang"]).strip()
+    except subprocess.CalledProcessError:
+        print("ERROR: Could not find clang. Please make sure Clang is installed and in PATH.")
+        sys.exit(1)
+        return
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
