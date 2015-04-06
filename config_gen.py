@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
-    parser.add_argument("-c", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
+    parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
     parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
