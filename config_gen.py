@@ -7,24 +7,29 @@ import re
 import argparse
 import datetime
 import multiprocessing
+import shlex
 import shutil
 import tempfile
 import time
 import subprocess
 
 
-# The default command used to invoke make
-make_cmd = "make"
+# Default flags for make
+default_make_flags = ["-i", "-j" + str(multiprocessing.cpu_count())]
 
 
 def main():
     # parse command-line args
-    global make_cmd
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
-    parser.add_argument("-m", "--make", default=make_cmd, help="The name of the make executable.")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
+    parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
+    parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM.")
+    parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
+    parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
+    parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
+    parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
-    make_cmd = args["make"]
     project_dir = os.path.abspath(args["PROJECT_DIR"])
 
     # verify that project_dir exists
@@ -33,12 +38,20 @@ def main():
         sys.exit(1)
         return
 
+    # verify the clang is installed
+    try:
+        args["compiler"] = subprocess.check_output(["which", args["compiler"] or "clang"]).strip()
+    except subprocess.CalledProcessError:
+        print("ERROR: Could not find clang. Please make sure it is installed and is either in your path, or specified with --compiler.")
+        sys.exit(1)
+        return
+
     # sanity check - remove this after we add Windows support
     if(sys.platform.startswith("win32")):
         print("ERROR: Windows is not supported")
 
     # prompt user to overwrite existing file (if necessary)
-    config_file = os.path.join(project_dir, ".ycm_extra_conf.py")
+    config_file = os.path.join(project_dir, ".ycm_extra_conf.py") if args["output"] is None else args["output"]
 
     if(os.path.exists(config_file)):
         print("'{}' already exists. Overwrite? [y/N] ".format(config_file)),
@@ -52,7 +65,16 @@ def main():
     (build_log, build_log_path) = tempfile.mkstemp(text=True)
     build_log = os.fdopen(build_log, "rw")
 
-    fake_build(project_dir, build_log_path)
+    # pass command-line args to fake_build() using kwargs
+    args["make_cmd"] = args.pop("make")
+    args["compiler_cmd"] = args.pop("compiler")
+    args["configure_opts"] = shlex.split(args["configure_opts"])
+    args["make_flags"] = default_make_flags if args["make_flags"] is None else shlex.split(args["make_flags"])
+    del args["PROJECT_DIR"]
+    del args["output"]
+
+    # perform the actual compilation of flags
+    fake_build(project_dir, build_log_path, **args)
     flags = parse_flags(build_log, build_log_path)
     generate_conf(flags, config_file)
 
@@ -61,8 +83,18 @@ def main():
     os.remove(build_log_path)
 
 
-def fake_build(project_dir, build_log_path):
-    '''Builds the project using the fake toolchain, to collect the compiler flags.'''
+def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out_of_tree, configure_opts, make_flags):
+    '''Builds the project using the fake toolchain, to collect the compiler flags.
+
+    project_dir: the directory containing the source files
+    build_log_path: the file to log commands to
+    verbose: show the build process output
+    make_cmd: the path of the make executable
+    compiler_cmd: the path of the clang executable
+    out_of_tree: perform an out-of-tree build (autotools only)
+    configure_opts: additional flags for configure stage
+    make_flags: additional flags for make
+    '''
 
     # TODO: add Windows support
     assert(not sys.platform.startswith("win32"))
@@ -71,12 +103,12 @@ def fake_build(project_dir, build_log_path):
     # environment variables and arguments for build process
     started = time.time()
     FNULL = open(os.devnull, "w")
-    proc_opts = {
+    proc_opts = {} if verbose else {
         "stdin" : FNULL,
         "stdout" : FNULL,
-        "stderr" : FNULL,
-        "cwd" : project_dir,
+        "stderr" : FNULL
     }
+    proc_opts["cwd"] = project_dir
     env = {
         "PATH" : "{}:{}".format(fake_path, os.environ["PATH"]),
         "CC" : "clang",
@@ -85,11 +117,16 @@ def fake_build(project_dir, build_log_path):
     }
     # used during configuration stage, so that cmake, etc. can verify what the compiler supports
     env_config = env.copy()
-    env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = "/usr/bin/clang"
+    env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = compiler_cmd
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
-    make_args = [make_cmd, "-i", "-j" + str(multiprocessing.cpu_count())]
+    make_args = [make_cmd] + make_flags
+
+    # helper function to display exact commands used
+    def run(cmd, *args, **kwargs):
+        print("$ " + " ".join(cmd))
+        subprocess.call(cmd, *args, **kwargs)
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
@@ -99,36 +136,48 @@ def fake_build(project_dir, build_log_path):
         proc_opts["cwd"] = build_dir
 
         print("Running cmake in '{}'...".format(build_dir))
-        subprocess.call(["cmake", project_dir], env=env_config, **proc_opts)
+        run(["cmake", project_dir] + configure_opts, env=env_config, **proc_opts)
 
-        print("Running make...")
-        subprocess.call(make_args, env=env, **proc_opts)
+        print("\nRunning make...")
+        run(make_args, env=env, **proc_opts)
 
-        print("Cleaning up...")
+        print("\nCleaning up...")
+        print("")
         shutil.rmtree(build_dir)
 
     elif(os.path.exists(os.path.join(project_dir, "configure"))):
         # Autotools
         # perform build in-tree, since not all projects handle out-of-tree builds correctly
 
-        print("Configuring...")
-        subprocess.call(["./configure"], env=env_config, **proc_opts)
+        if(out_of_tree):
+            build_dir = tempfile.mkdtemp()
+            proc_opts["cwd"] = build_dir
+            print("Configuring autotools in '{}'...".format(build_dir))
+        else:
+            print("Configuring autotools...")
 
-        print("Running make...")
-        subprocess.call(make_args, env=env, **proc_opts)
+        run([os.path.join(project_dir, "configure")] + configure_opts, env=env_config, **proc_opts)
 
-        print("Cleaning up...")
-        subprocess.call([make_cmd, "maintainer-clean"], env=env, **proc_opts)
+        print("\nRunning make...")
+        run(make_args, env=env, **proc_opts)
+
+        print("\nCleaning up...")
+
+        if(out_of_tree):
+            print("")
+            shutil.rmtree(build_dir)
+        else:
+            run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
 
     elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
         # Make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
-        subprocess.call([make_cmd, "clean"], env=env, **proc_opts)
+        run([make_cmd, "clean"], env=env, **proc_opts)
 
-        print("Running make...")
-        subprocess.call(make_args, env=env, **proc_opts)
+        print("\nRunning make...")
+        run(make_args, env=env, **proc_opts)
 
     else:
         print("ERROR: Unknown build system")
@@ -139,6 +188,7 @@ def fake_build(project_dir, build_log_path):
 
 def parse_flags(build_log, build_log_path):
     '''Creates a list of compiler flags from the build log.
+
     build_log: an iterator of lines
     Returns: a list of flags'''
 

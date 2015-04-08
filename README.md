@@ -7,9 +7,13 @@ It is reasonably fast, taking ~10 seconds to generate a configuration file for t
 ## Usage
 Run ```./config-gen.py PROJECT_DIRECTORY```, where ```PROJECT_DIRECTORY``` is the root directory of your project's build system (i.e. the one containing the root Makefile, etc.)
 
-YCM-Generator can also be used as a Vim plugin. Once installed with Vundle/NeoBundle/etc., use the ```:YcmGenerateConfig``` command to generate a config file for the current directory.
+YCM-Generator can also be used as a Vim plugin. Once installed with Vundle/NeoBundle/etc., use the ```:YcmGenerateConfig``` command to generate a config file for the current directory. This command accepts the same arguments as ```./config-gen.py```, but does not require the project directory to be specified (it defaults to the current working directory).
 
 ## Requirements and Limitations
+* Requirements:
+    + Python 2
+    + Clang
+
 * Supported build systems:
     + Make
     + CMake
