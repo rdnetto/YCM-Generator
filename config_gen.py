@@ -23,6 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
+    parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM.")
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
     parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
@@ -34,6 +35,14 @@ def main():
     # verify that project_dir exists
     if(not os.path.exists(project_dir)):
         print("ERROR: '{}' does not exist".format(project_dir))
+        sys.exit(1)
+        return
+
+    # verify the clang is installed
+    try:
+        args["compiler"] = subprocess.check_output(["which", args["compiler"] or "clang"]).strip()
+    except subprocess.CalledProcessError:
+        print("ERROR: Could not find clang. Please make sure it is installed and is either in your path, or specified with --compiler.")
         sys.exit(1)
         return
 
@@ -58,6 +67,7 @@ def main():
 
     # pass command-line args to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
+    args["compiler_cmd"] = args.pop("compiler")
     args["configure_opts"] = shlex.split(args["configure_opts"])
     args["make_flags"] = default_make_flags if args["make_flags"] is None else shlex.split(args["make_flags"])
     del args["PROJECT_DIR"]
@@ -73,13 +83,14 @@ def main():
     os.remove(build_log_path)
 
 
-def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, configure_opts, make_flags):
+def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out_of_tree, configure_opts, make_flags):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
     build_log_path: the file to log commands to
     verbose: show the build process output
     make_cmd: the path of the make executable
+    compiler_cmd: the path of the clang executable
     out_of_tree: perform an out-of-tree build (autotools only)
     configure_opts: additional flags for configure stage
     make_flags: additional flags for make
@@ -106,13 +117,7 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, out_of_tree, conf
     }
     # used during configuration stage, so that cmake, etc. can verify what the compiler supports
     env_config = env.copy()
-
-    try:
-        env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = subprocess.check_output(["which", "clang"]).strip()
-    except subprocess.CalledProcessError:
-        print("ERROR: Could not find clang. Please make sure Clang is installed and in PATH.")
-        sys.exit(1)
-        return
+    env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = compiler_cmd
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
