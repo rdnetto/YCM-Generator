@@ -123,6 +123,11 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
     # depend upon the existence of various output files
     make_args = [make_cmd] + make_flags
 
+    # helper function to display exact commands used
+    def run(cmd, *args, **kwargs):
+        print("$ " + " ".join(cmd))
+        subprocess.call(cmd, *args, **kwargs)
+
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
         # Cmake
@@ -131,10 +136,10 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
         proc_opts["cwd"] = build_dir
 
         print("Running cmake in '{}'...".format(build_dir))
-        subprocess.call(["cmake", project_dir] + configure_opts, env=env_config, **proc_opts)
+        run(["cmake", project_dir] + configure_opts, env=env_config, **proc_opts)
 
         print("\nRunning make...")
-        subprocess.call(make_args, env=env, **proc_opts)
+        run(make_args, env=env, **proc_opts)
 
         print("\nCleaning up...")
         shutil.rmtree(build_dir)
@@ -150,27 +155,27 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
         else:
             print("Configuring autotools...")
 
-        subprocess.call([os.path.join(project_dir, "configure")] + configure_opts, env=env_config, **proc_opts)
+        run([os.path.join(project_dir, "configure")] + configure_opts, env=env_config, **proc_opts)
 
         print("\nRunning make...")
-        subprocess.call(make_args, env=env, **proc_opts)
+        run(make_args, env=env, **proc_opts)
 
         print("\nCleaning up...")
 
         if(out_of_tree):
             shutil.rmtree(build_dir)
         else:
-            subprocess.call([make_cmd, "maintainer-clean"], env=env, **proc_opts)
+            run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
 
     elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
         # Make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
-        subprocess.call([make_cmd, "clean"], env=env, **proc_opts)
+        run([make_cmd, "clean"], env=env, **proc_opts)
 
         print("\nRunning make...")
-        subprocess.call(make_args, env=env, **proc_opts)
+        run(make_args, env=env, **proc_opts)
 
     else:
         print("ERROR: Unknown build system")
