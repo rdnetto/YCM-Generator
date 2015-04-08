@@ -142,6 +142,7 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
         run(make_args, env=env, **proc_opts)
 
         print("\nCleaning up...")
+        print("")
         shutil.rmtree(build_dir)
 
     elif(os.path.exists(os.path.join(project_dir, "configure"))):
@@ -163,6 +164,7 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
         print("\nCleaning up...")
 
         if(out_of_tree):
+            print("")
             shutil.rmtree(build_dir)
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
