@@ -27,6 +27,7 @@ def main():
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
     parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
+    parser.add_argument("-x", "--language", choices=["c", "c++"], help="Only output flags for the given language. This defaults to whichever language has its compiler invoked the most.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
@@ -74,6 +75,7 @@ def main():
     args["make_cmd"] = args.pop("make")
     args["configure_opts"] = shlex.split(args["configure_opts"])
     args["make_flags"] = default_make_flags if args["make_flags"] is None else shlex.split(args["make_flags"])
+    force_lang = args.pop("language")
     del args["compiler"]
     del args["output"]
     del args["PROJECT_DIR"]
@@ -89,7 +91,12 @@ def main():
             print("Collected {} relevant entries for C compilation.".format(c_count))
             print("Collected {} relevant entries for C++ compilation.".format(cxx_count))
 
-            # select the language to compile for
+            # select the language to compile for. If -x was used, zero all other options (so we don't need to repeat the error code)
+            if(force_lang == "c"):
+                cxx_count = 0
+            elif(force_lang == "c++"):
+                c_count = 0
+
             if(c_count == 0 and cxx_count == 0):
                 print()
                 print("ERROR: No commands were logged to the build logs (C: {}, C++: {}).".format(c_build_log.name, cxx_build_log.name))
