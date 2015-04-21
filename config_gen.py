@@ -104,16 +104,16 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
     started = time.time()
     FNULL = open(os.devnull, "w")
     proc_opts = {} if verbose else {
-        "stdin" : FNULL,
-        "stdout" : FNULL,
-        "stderr" : FNULL
+        "stdin": FNULL,
+        "stdout": FNULL,
+        "stderr": FNULL
     }
     proc_opts["cwd"] = project_dir
     env = {
-        "PATH" : "{}:{}".format(fake_path, os.environ["PATH"]),
-        "CC" : "clang",
-        "CXX" : "clang",
-        "YCM_CONFIG_GEN_CC_LOG" : build_log_path,
+        "PATH": "{}:{}".format(fake_path, os.environ["PATH"]),
+        "CC": "clang",
+        "CXX": "clang",
+        "YCM_CONFIG_GEN_CC_LOG": build_log_path,
     }
     # used during configuration stage, so that cmake, etc. can verify what the compiler supports
     env_config = env.copy()
@@ -168,7 +168,6 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
             shutil.rmtree(build_dir)
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
-
 
     elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
         # Make
@@ -267,7 +266,7 @@ def generate_conf(flags, config_file):
                     for flag in flags:
                         if(isinstance(flag, basestring)):
                             output.write("    '{}',\n".format(flag))
-                        else: #is tuple
+                        else: # is tuple
                             output.write("    '{}', '{}',\n".format(*flag))
 
                 else:
