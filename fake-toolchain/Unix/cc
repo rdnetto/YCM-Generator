@@ -1,14 +1,14 @@
 #!/bin/bash
 
-if [[ ! -z "$YCM_CONFIG_GEN_CLANG_PASSTHROUGH" ]]; then
+if [[ ! -z "$YCM_CONFIG_GEN_CC_PASSTHROUGH" ]]; then
     # Cmake determines compiler properties by compiling a test file, so call clang for this case
-    $YCM_CONFIG_GEN_CLANG_PASSTHROUGH $@
+    $YCM_CONFIG_GEN_CC_PASSTHROUGH $@
 
 elif [[ "$@" == "-v" ]]; then
     # Needed to enable clang-specific options for certain build systems (e.g. linux)
     echo "clang version 3.5.0 (fake toolchain)"
 
 else
-    echo "$@" >> $YCM_CONFIG_GEN_LOG
+    echo "$@" >> $YCM_CONFIG_GEN_CC_LOG
 fi
 

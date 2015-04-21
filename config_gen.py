@@ -113,11 +113,11 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
         "PATH" : "{}:{}".format(fake_path, os.environ["PATH"]),
         "CC" : "clang",
         "CXX" : "clang",
-        "YCM_CONFIG_GEN_LOG" : build_log_path,
+        "YCM_CONFIG_GEN_CC_LOG" : build_log_path,
     }
     # used during configuration stage, so that cmake, etc. can verify what the compiler supports
     env_config = env.copy()
-    env_config["YCM_CONFIG_GEN_CLANG_PASSTHROUGH"] = compiler_cmd
+    env_config["YCM_CONFIG_GEN_CC_PASSTHROUGH"] = compiler_cmd
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
