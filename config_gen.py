@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
-    parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM.")
+    parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM. The executable for clang++ will be inferred from this.")
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
     parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
@@ -38,11 +38,20 @@ def main():
         sys.exit(1)
         return
 
-    # verify the clang is installed
+    # verify the clang is installed, and infer the correct name for both the C and C++ compilers
     try:
-        args["compiler"] = subprocess.check_output(["which", args["compiler"] or "clang"]).strip()
+        cc = args["compiler"] or "clang"
+        args["cc"] = subprocess.check_output(["which", cc]).strip()
     except subprocess.CalledProcessError:
-        print("ERROR: Could not find clang. Please make sure it is installed and is either in your path, or specified with --compiler.")
+        print("ERROR: Could not find clang at '{}'. Please make sure it is installed and is either in your path, or specified with --compiler.".format(cc))
+        sys.exit(1)
+        return
+
+    try:
+        cxx = (args["compiler"] or "clang").replace("clang", "clang++")
+        args["cxx"] = subprocess.check_output(["which", cxx]).strip()
+    except subprocess.CalledProcessError:
+        print("ERROR: Could not find clang++ at '{}'. Please make sure it is installed and specified appropriately.".format(cxx))
         sys.exit(1)
         return
 
@@ -61,36 +70,52 @@ def main():
             sys.exit(1)
             return
 
-    # temporary file to hold build log
-    (build_log, build_log_path) = tempfile.mkstemp(text=True)
-    build_log = os.fdopen(build_log, "rw")
-
-    # pass command-line args to fake_build() using kwargs
+    # command-line args to pass to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
-    args["compiler_cmd"] = args.pop("compiler")
     args["configure_opts"] = shlex.split(args["configure_opts"])
     args["make_flags"] = default_make_flags if args["make_flags"] is None else shlex.split(args["make_flags"])
-    del args["PROJECT_DIR"]
+    del args["compiler"]
     del args["output"]
+    del args["PROJECT_DIR"]
 
-    # perform the actual compilation of flags
-    fake_build(project_dir, build_log_path, **args)
-    flags = parse_flags(build_log, build_log_path)
-    generate_conf(flags, config_file)
+    # temporary files to hold build logs
+    with tempfile.NamedTemporaryFile(mode="rw") as c_build_log:
+        with tempfile.NamedTemporaryFile(mode="rw") as cxx_build_log:
+            # perform the actual compilation of flags
+            fake_build(project_dir, c_build_log.name, cxx_build_log.name, **args)
+            (c_count, c_flags) = parse_flags(c_build_log)
+            (cxx_count, cxx_flags) = parse_flags(cxx_build_log)
 
-    # cleanup
-    build_log.close()
-    os.remove(build_log_path)
+            print("Collected {} relevant entries for C compilation.".format(c_count))
+            print("Collected {} relevant entries for C++ compilation.".format(cxx_count))
+
+            # select the language to compile for
+            if(c_count == 0 and cxx_count == 0):
+                print()
+                print("ERROR: No commands were logged to the build logs (C: {}, C++: {}).".format(c_build_log.name, cxx_build_log.name))
+                print("Your build system may not be compatible.")
+                c_build_log.delete = False
+                cxx_build_log.delete = False
+                sys.exit(3)
+
+            elif(c_count > cxx_count):
+                generate_conf(["-x", "c"] + c_flags, config_file)
+                print("Created config file with C flags")
+
+            else:
+                generate_conf(["-x", "c++"] + cxx_flags, config_file)
+                print("Created config file with C++ flags")
 
 
-def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out_of_tree, configure_opts, make_flags):
+def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
     build_log_path: the file to log commands to
     verbose: show the build process output
     make_cmd: the path of the make executable
-    compiler_cmd: the path of the clang executable
+    cc: the path of the clang executable
+    cxx: the path of the clang++ executable
     out_of_tree: perform an out-of-tree build (autotools only)
     configure_opts: additional flags for configure stage
     make_flags: additional flags for make
@@ -112,12 +137,14 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
     env = {
         "PATH": "{}:{}".format(fake_path, os.environ["PATH"]),
         "CC": "clang",
-        "CXX": "clang",
-        "YCM_CONFIG_GEN_CC_LOG": build_log_path,
+        "CXX": "clang++",
+        "YCM_CONFIG_GEN_CC_LOG": c_build_log_path,
+        "YCM_CONFIG_GEN_CXX_LOG": cxx_build_log_path,
     }
     # used during configuration stage, so that cmake, etc. can verify what the compiler supports
     env_config = env.copy()
-    env_config["YCM_CONFIG_GEN_CC_PASSTHROUGH"] = compiler_cmd
+    env_config["YCM_CONFIG_GEN_CC_PASSTHROUGH"] = cc
+    env_config["YCM_CONFIG_GEN_CXX_PASSTHROUGH"] = cxx
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
@@ -183,13 +210,16 @@ def fake_build(project_dir, build_log_path, verbose, make_cmd, compiler_cmd, out
         sys.exit(2)
 
     print("Build completed in {} sec".format(round(time.time() - started, 2)))
+    print("")
 
 
-def parse_flags(build_log, build_log_path):
+def parse_flags(build_log):
     '''Creates a list of compiler flags from the build log.
 
     build_log: an iterator of lines
-    Returns: a list of flags'''
+    Returns: (line_count, flags)
+    flags is a list, and line_count is an integer
+    '''
 
     # Used to ignore entries which result in temporary files, or don't fully
     # compile the file
@@ -204,18 +234,17 @@ def parse_flags(build_log, build_log_path):
     flags_whitelist = ["-[iID].*", "-W[^,]*", "-std=[a-z0-9+]+", "-(no)?std(lib|inc)", "-m[0-9]+"]
     flags_whitelist = re.compile("|".join(map("^{}$".format, flags_whitelist)))
     flags = set()
-    empty_log = True
+    line_count = 0
 
     # Used to only bundle filenames with applicable arguments
     filename_flags = ["-o", "-I", "-isystem", "-include"]
 
     # Process build log
     for line in build_log:
-        empty_log = False
-
         if(temp_output.search(line)):
             continue
 
+        line_count += 1
         words = split_flags(line)
 
         for (i, word) in enumerate(words):
@@ -228,12 +257,6 @@ def parse_flags(build_log, build_log_path):
             else:
                 flags.add(word)
 
-    # sanity check
-    if(empty_log):
-        print("ERROR: No commands were logged to the build log ({}).".format(build_log_path))
-        print("Your build system may not be compatible.")
-        sys.exit(3)
-
     # Only specify one word size (the largest)
     # (Different sizes are used for different files in the linux kernel.)
     mRegex = re.compile("^-m[0-9]+$")
@@ -245,7 +268,7 @@ def parse_flags(build_log, build_log_path):
 
         flags.add(max(word_flags))
 
-    return sorted(flags)
+    return (line_count, sorted(flags))
 
 
 def generate_conf(flags, config_file):
