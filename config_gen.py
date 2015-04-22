@@ -160,6 +160,9 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     # depend upon the existence of various output files
     make_args = [make_cmd] + make_flags
 
+    # sanity check - make sure the toolchain is available
+    assert os.path.exists(fake_path), "Could not find toolchain at '{}'".format(fake_path)
+
     # helper function to display exact commands used
     def run(cmd, *args, **kwargs):
         print("$ " + " ".join(cmd))
