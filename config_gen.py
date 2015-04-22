@@ -29,6 +29,7 @@ def main():
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
     parser.add_argument("-x", "--language", choices=["c", "c++"], help="Only output flags for the given language. This defaults to whichever language has its compiler invoked the most.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
+    parser.add_argument("-e", "--preserve-environment", action="store_true", help="Pass environment variables to build processes.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
     project_dir = os.path.abspath(args["PROJECT_DIR"])
@@ -114,7 +115,7 @@ def main():
                 print("Created config file with C++ flags")
 
 
-def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags):
+def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
@@ -126,6 +127,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     out_of_tree: perform an out-of-tree build (autotools only)
     configure_opts: additional flags for configure stage
     make_flags: additional flags for make
+    preserve_environment: pass environment variables to build processes
     '''
 
     # TODO: add Windows support
@@ -141,13 +143,14 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         "stderr": FNULL
     }
     proc_opts["cwd"] = project_dir
-    env = {
-        "PATH": "{}:{}".format(fake_path, os.environ["PATH"]),
-        "CC": "clang",
-        "CXX": "clang++",
-        "YCM_CONFIG_GEN_CC_LOG": c_build_log_path,
-        "YCM_CONFIG_GEN_CXX_LOG": cxx_build_log_path,
-    }
+
+    env = os.environ if preserve_environment else {}
+    env["PATH"]  = "{}:{}".format(fake_path, os.environ["PATH"])
+    env["CC"] = "clang"
+    env["CXX"] = "clang++"
+    env["YCM_CONFIG_GEN_CC_LOG"] = c_build_log_path
+    env["YCM_CONFIG_GEN_CXX_LOG"] = cxx_build_log_path
+
     # used during configuration stage, so that cmake, etc. can verify what the compiler supports
     env_config = env.copy()
     env_config["YCM_CONFIG_GEN_CC_PASSTHROUGH"] = cc
