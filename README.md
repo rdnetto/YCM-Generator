@@ -28,6 +28,9 @@ The script is currently supported under Unices (Linux, BSD, OS X) only.
 Implementing Windows support consists of porting the contents of ```fake-toolchain/Unix```.
 If you are interested in implementing/testing this, please open a pull request.
 
+## Development
+Patches are welcome. Please submit pull requests against the ```develop``` branch.
+
 ## License
 YCM-Generator is published under the GNU GPLv3.
 
