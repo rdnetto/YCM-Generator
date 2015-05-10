@@ -1,9 +1,9 @@
 
 let s:config_gen = expand("<sfile>:p:h:h") . "/config_gen.py"
 
-command -nargs=? YcmGenerateConfig call s:YcmGenerateConfig("<args>")
+command! -nargs=? YcmGenerateConfig call s:YcmGenerateConfig("<args>")
 
-function s:YcmGenerateConfig(flags)
+function! s:YcmGenerateConfig(flags)
     let l:cmd = "! " . s:config_gen . " " . a:flags
 
     " Only append the working directory if the last option is not a flag
