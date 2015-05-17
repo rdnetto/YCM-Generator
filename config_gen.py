@@ -209,7 +209,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
-    elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
+    elif(any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]])):
         # Make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
