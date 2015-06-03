@@ -25,8 +25,9 @@ def main():
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
     parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM. The executable for clang++ will be inferred from this.")
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
+    parser.add_argument("-F", "--format", choices=["ycm", "cc"], default="ycm", help="Format of output file (YouCompleteMe or color_coded). Default: ycm")
     parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
-    parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
+    parser.add_argument("-o", "--output", help="Save the config file as OUTPUT. Default: .ycm_extra_conf.py, or .color_coded if --format=cc.")
     parser.add_argument("-x", "--language", choices=["c", "c++"], help="Only output flags for the given language. This defaults to whichever language has its compiler invoked the most.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("-e", "--preserve-environment", action="store_true", help="Pass environment variables to build processes.")
@@ -59,7 +60,11 @@ def main():
         print("ERROR: Windows is not supported")
 
     # prompt user to overwrite existing file (if necessary)
-    config_file = os.path.join(project_dir, ".ycm_extra_conf.py") if args["output"] is None else args["output"]
+    config_file = {
+        None:  args["output"],
+        "cc":  os.path.join(project_dir, ".color_coded"),
+        "ycm": os.path.join(project_dir, ".ycm_extra_conf.py"),
+    }[args["format"] if args["output"] is None else None]
 
     if(os.path.exists(config_file)):
         print("'{}' already exists. Overwrite? [y/N] ".format(config_file)),
@@ -73,9 +78,15 @@ def main():
     args["configure_opts"] = shlex.split(args["configure_opts"])
     args["make_flags"] = default_make_flags if args["make_flags"] is None else shlex.split(args["make_flags"])
     force_lang = args.pop("language")
+    output_format = args.pop("format")
     del args["compiler"]
     del args["output"]
     del args["PROJECT_DIR"]
+
+    generate_conf = {
+        "ycm": generate_ycm_conf,
+        "cc":  generate_cc_conf,
+    }[output_format]
 
     # temporary files to hold build logs
     with tempfile.NamedTemporaryFile(mode="rw") as c_build_log:
@@ -108,7 +119,7 @@ def main():
                 lang, flags = ("c++", cxx_flags)
 
             generate_conf(["-x", lang] + flags, config_file)
-            print("Created config file with {} {} flags".format(len(flags), lang.upper()))
+            print("Created {} config file with {} {} flags".format(output_format.upper(), len(flags), lang.upper()))
 
 
 def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment):
@@ -304,7 +315,22 @@ def parse_flags(build_log):
     return (line_count, skip_count, sorted(flags))
 
 
-def generate_conf(flags, config_file):
+def generate_cc_conf(flags, config_file):
+    '''Generates the .color_coded file
+
+    flags: the list of flags
+    config_file: the path to save the configuration file at'''
+
+    with open(config_file, "w") as output:
+        for flag in flags:
+            if(isinstance(flag, basestring)):
+                output.write(flag + "\n")
+            else: # is tuple
+                for f in flag:
+                    output.write(f + "\n")
+
+
+def generate_ycm_conf(flags, config_file):
     '''Generates the .ycm_extra_conf.py.
 
     flags: the list of flags
