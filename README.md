@@ -27,13 +27,18 @@ Your build system should support specifying the compiler through the ```CC```/``
 
 Some flags present in the resulting configuration file may be mutually exclusive with each other - reading the generated file prior to use is recommended.
 
+# Documentation & Support
+* run ```./config_gen.py --help``` to see the complete list of supported options.
+* if you receive the error message ```ERROR: No commands were logged to the build logs```, try using the ```--verbose``` flag to see any error messages
+    + if you open an issue regarding this error message, please include the output when running with ```--verbose``` and a link to the project repo (if possible)
+
+## Development
+Patches are welcome. Please submit pull requests against the ```develop``` branch.
+
 ### Windows support
 The script is currently supported under Unices (Linux, BSD, OS X) only.
 Implementing Windows support consists of porting the contents of ```fake-toolchain/Unix```.
 If you are interested in implementing/testing this, please open a pull request.
-
-## Development
-Patches are welcome. Please submit pull requests against the ```develop``` branch.
 
 ## License
 YCM-Generator is published under the GNU GPLv3.
