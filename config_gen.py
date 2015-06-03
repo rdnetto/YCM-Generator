@@ -107,11 +107,11 @@ def main():
                 sys.exit(3)
 
             elif(c_count > cxx_count):
-                generate_conf(["-x", "c"] + c_flags, config_file)
+                generate_conf([("-x", "c")] + c_flags, config_file)
                 print("Created config file with C flags")
 
             else:
-                generate_conf(["-x", "c++"] + cxx_flags, config_file)
+                generate_conf([("-x", "c++")] + cxx_flags, config_file)
                 print("Created config file with C++ flags")
 
 
