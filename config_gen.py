@@ -25,8 +25,9 @@ def main():
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
     parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM. The executable for clang++ will be inferred from this.")
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
+    parser.add_argument("-F", "--format", choices=["ycm", "cc"], default="ycm", help="Format of output file (YouCompleteMe or color_coded). Default: ycm")
     parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
-    parser.add_argument("-o", "--output", help="Save the config file as OUTPUT instead of .ycm_extra_conf.py.")
+    parser.add_argument("-o", "--output", help="Save the config file as OUTPUT. Default: .ycm_extra_conf.py, or .color_coded if --format=cc.")
     parser.add_argument("-x", "--language", choices=["c", "c++"], help="Only output flags for the given language. This defaults to whichever language has its compiler invoked the most.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
     parser.add_argument("-e", "--preserve-environment", action="store_true", help="Pass environment variables to build processes.")
@@ -37,8 +38,7 @@ def main():
     # verify that project_dir exists
     if(not os.path.exists(project_dir)):
         print("ERROR: '{}' does not exist".format(project_dir))
-        sys.exit(1)
-        return
+        return 1
 
     # verify the clang is installed, and infer the correct name for both the C and C++ compilers
     try:
@@ -46,51 +46,58 @@ def main():
         args["cc"] = subprocess.check_output(["which", cc]).strip()
     except subprocess.CalledProcessError:
         print("ERROR: Could not find clang at '{}'. Please make sure it is installed and is either in your path, or specified with --compiler.".format(cc))
-        sys.exit(1)
-        return
+        return 1
 
     try:
         cxx = (args["compiler"] or "clang").replace("clang", "clang++")
         args["cxx"] = subprocess.check_output(["which", cxx]).strip()
     except subprocess.CalledProcessError:
         print("ERROR: Could not find clang++ at '{}'. Please make sure it is installed and specified appropriately.".format(cxx))
-        sys.exit(1)
-        return
+        return 1
 
     # sanity check - remove this after we add Windows support
     if(sys.platform.startswith("win32")):
         print("ERROR: Windows is not supported")
 
     # prompt user to overwrite existing file (if necessary)
-    config_file = os.path.join(project_dir, ".ycm_extra_conf.py") if args["output"] is None else args["output"]
+    config_file = {
+        None:  args["output"],
+        "cc":  os.path.join(project_dir, ".color_coded"),
+        "ycm": os.path.join(project_dir, ".ycm_extra_conf.py"),
+    }[args["format"] if args["output"] is None else None]
 
     if(os.path.exists(config_file)):
         print("'{}' already exists. Overwrite? [y/N] ".format(config_file)),
         response = sys.stdin.readline().strip().lower()
 
         if(response != "y" and response != "yes"):
-            sys.exit(1)
-            return
+            return 1
 
     # command-line args to pass to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
     args["configure_opts"] = shlex.split(args["configure_opts"])
     args["make_flags"] = default_make_flags if args["make_flags"] is None else shlex.split(args["make_flags"])
     force_lang = args.pop("language")
+    output_format = args.pop("format")
     del args["compiler"]
     del args["output"]
     del args["PROJECT_DIR"]
+
+    generate_conf = {
+        "ycm": generate_ycm_conf,
+        "cc":  generate_cc_conf,
+    }[output_format]
 
     # temporary files to hold build logs
     with tempfile.NamedTemporaryFile(mode="rw") as c_build_log:
         with tempfile.NamedTemporaryFile(mode="rw") as cxx_build_log:
             # perform the actual compilation of flags
             fake_build(project_dir, c_build_log.name, cxx_build_log.name, **args)
-            (c_count, c_flags) = parse_flags(c_build_log)
-            (cxx_count, cxx_flags) = parse_flags(cxx_build_log)
+            (c_count, c_skip, c_flags) = parse_flags(c_build_log)
+            (cxx_count, cxx_skip, cxx_flags) = parse_flags(cxx_build_log)
 
-            print("Collected {} relevant entries for C compilation.".format(c_count))
-            print("Collected {} relevant entries for C++ compilation.".format(cxx_count))
+            print("Collected {} relevant entries for C compilation ({} discarded).".format(c_count, c_skip))
+            print("Collected {} relevant entries for C++ compilation ({} discarded).".format(cxx_count, cxx_skip))
 
             # select the language to compile for. If -x was used, zero all other options (so we don't need to repeat the error code)
             if(force_lang == "c"):
@@ -104,15 +111,15 @@ def main():
                 print("Your build system may not be compatible.")
                 c_build_log.delete = False
                 cxx_build_log.delete = False
-                sys.exit(3)
+                return 3
 
             elif(c_count > cxx_count):
-                generate_conf(["-x", "c"] + c_flags, config_file)
-                print("Created config file with C flags")
-
+                lang, flags = ("c", c_flags)
             else:
-                generate_conf(["-x", "c++"] + cxx_flags, config_file)
-                print("Created config file with C++ flags")
+                lang, flags = ("c++", cxx_flags)
+
+            generate_conf(["-x", lang] + flags, config_file)
+            print("Created {} config file with {} {} flags".format(output_format.upper(), len(flags), lang.upper()))
 
 
 def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment):
@@ -209,7 +216,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
-    elif(os.path.exists(os.path.join(project_dir, "Makefile"))):
+    elif(any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]])):
         # Make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
@@ -230,13 +237,14 @@ def parse_flags(build_log):
     '''Creates a list of compiler flags from the build log.
 
     build_log: an iterator of lines
-    Returns: (line_count, flags)
-    flags is a list, and line_count is an integer
+    Returns: (line_count, skip_count, flags)
+    flags is a list, and the counts are integers
     '''
 
     # Used to ignore entries which result in temporary files, or don't fully
     # compile the file
-    temp_output = re.compile("-S|-E|-x assembler|-o ([a-zA-Z0-9._].tmp)|(/dev/null)")
+    temp_output = re.compile("(-x assembler)|(-o ([a-zA-Z0-9._].tmp))|(/dev/null)")
+    skip_count = 0
 
     # Flags we want:
     # -includes (-i, -I)
@@ -249,12 +257,17 @@ def parse_flags(build_log):
     flags = set()
     line_count = 0
 
+    # macro definitions should be handled separately, so we can resolve duplicates
+    define_flags = dict()
+    define_regex = re.compile("-D([a-zA-Z0-9_]+)=(.*)")
+
     # Used to only bundle filenames with applicable arguments
     filename_flags = ["-o", "-I", "-isystem", "-include"]
 
     # Process build log
     for line in build_log:
         if(temp_output.search(line)):
+            skip_count += 1
             continue
 
         line_count += 1
@@ -262,6 +275,16 @@ def parse_flags(build_log):
 
         for (i, word) in enumerate(words):
             if(word[0] != '-' or not flags_whitelist.match(word)):
+                continue
+
+            # handle macro definitions
+            m = define_regex.match(word)
+            if(m):
+                if(m.group(1) not in define_flags):
+                    define_flags[m.group(1)] = [m.group(2)]
+                elif(m.group(2) not in define_flags[m.group(1)]):
+                    define_flags[m.group(1)].append(m.group(2))
+
                 continue
 
             # include arguments for this option, if there are any, as a tuple
@@ -281,10 +304,33 @@ def parse_flags(build_log):
 
         flags.add(max(word_flags))
 
-    return (line_count, sorted(flags))
+    # Resolve duplicate macro definitions (always choose the last value for consistency)
+    for name, values in define_flags.iteritems():
+        if(len(values) > 1):
+            print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
+            values.sort()
+
+        flags.add("-D{}={}".format(name, values[0]))
+
+    return (line_count, skip_count, sorted(flags))
 
 
-def generate_conf(flags, config_file):
+def generate_cc_conf(flags, config_file):
+    '''Generates the .color_coded file
+
+    flags: the list of flags
+    config_file: the path to save the configuration file at'''
+
+    with open(config_file, "w") as output:
+        for flag in flags:
+            if(isinstance(flag, basestring)):
+                output.write(flag + "\n")
+            else: # is tuple
+                for f in flag:
+                    output.write(f + "\n")
+
+
+def generate_ycm_conf(flags, config_file):
     '''Generates the .ycm_extra_conf.py.
 
     flags: the list of flags
@@ -346,5 +392,6 @@ def unbalanced_quotes(s):
 
 
 if(__name__ == "__main__"):
-    main()
+    # Note that sys.exit() lets us use None and 0 interchangably
+    sys.exit(main())
 
