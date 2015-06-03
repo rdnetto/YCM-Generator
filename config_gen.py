@@ -236,7 +236,7 @@ def parse_flags(build_log):
 
     # Used to ignore entries which result in temporary files, or don't fully
     # compile the file
-    temp_output = re.compile("-S|-E|-x assembler|-o ([a-zA-Z0-9._].tmp)|(/dev/null)")
+    temp_output = re.compile("(-x assembler)|(-o ([a-zA-Z0-9._].tmp))|(/dev/null)")
 
     # Flags we want:
     # -includes (-i, -I)
