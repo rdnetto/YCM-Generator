@@ -103,12 +103,12 @@ def main():
                 return 3
 
             elif(c_count > cxx_count):
-                generate_conf([("-x", "c")] + c_flags, config_file)
-                print("Created config file with C flags")
-
+                lang, flags = ("c", c_flags)
             else:
-                generate_conf([("-x", "c++")] + cxx_flags, config_file)
-                print("Created config file with C++ flags")
+                lang, flags = ("c++", cxx_flags)
+
+            generate_conf(["-x", lang] + flags, config_file)
+            print("Created config file with {} {} flags".format(len(flags), lang.upper()))
 
 
 def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment):
