@@ -37,8 +37,7 @@ def main():
     # verify that project_dir exists
     if(not os.path.exists(project_dir)):
         print("ERROR: '{}' does not exist".format(project_dir))
-        sys.exit(1)
-        return
+        return 1
 
     # verify the clang is installed, and infer the correct name for both the C and C++ compilers
     try:
@@ -46,16 +45,14 @@ def main():
         args["cc"] = subprocess.check_output(["which", cc]).strip()
     except subprocess.CalledProcessError:
         print("ERROR: Could not find clang at '{}'. Please make sure it is installed and is either in your path, or specified with --compiler.".format(cc))
-        sys.exit(1)
-        return
+        return 1
 
     try:
         cxx = (args["compiler"] or "clang").replace("clang", "clang++")
         args["cxx"] = subprocess.check_output(["which", cxx]).strip()
     except subprocess.CalledProcessError:
         print("ERROR: Could not find clang++ at '{}'. Please make sure it is installed and specified appropriately.".format(cxx))
-        sys.exit(1)
-        return
+        return 1
 
     # sanity check - remove this after we add Windows support
     if(sys.platform.startswith("win32")):
@@ -69,8 +66,7 @@ def main():
         response = sys.stdin.readline().strip().lower()
 
         if(response != "y" and response != "yes"):
-            sys.exit(1)
-            return
+            return 1
 
     # command-line args to pass to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
@@ -104,7 +100,7 @@ def main():
                 print("Your build system may not be compatible.")
                 c_build_log.delete = False
                 cxx_build_log.delete = False
-                sys.exit(3)
+                return 3
 
             elif(c_count > cxx_count):
                 generate_conf([("-x", "c")] + c_flags, config_file)
@@ -370,5 +366,6 @@ def unbalanced_quotes(s):
 
 
 if(__name__ == "__main__"):
-    main()
+    # Note that sys.exit() lets us use None and 0 interchangably
+    sys.exit(main())
 
