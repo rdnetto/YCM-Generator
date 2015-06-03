@@ -86,11 +86,11 @@ def main():
         with tempfile.NamedTemporaryFile(mode="rw") as cxx_build_log:
             # perform the actual compilation of flags
             fake_build(project_dir, c_build_log.name, cxx_build_log.name, **args)
-            (c_count, c_flags) = parse_flags(c_build_log)
-            (cxx_count, cxx_flags) = parse_flags(cxx_build_log)
+            (c_count, c_skip, c_flags) = parse_flags(c_build_log)
+            (cxx_count, cxx_skip, cxx_flags) = parse_flags(cxx_build_log)
 
-            print("Collected {} relevant entries for C compilation.".format(c_count))
-            print("Collected {} relevant entries for C++ compilation.".format(cxx_count))
+            print("Collected {} relevant entries for C compilation ({} discarded).".format(c_count, c_skip))
+            print("Collected {} relevant entries for C++ compilation ({} discarded).".format(cxx_count, cxx_skip))
 
             # select the language to compile for. If -x was used, zero all other options (so we don't need to repeat the error code)
             if(force_lang == "c"):
@@ -230,13 +230,14 @@ def parse_flags(build_log):
     '''Creates a list of compiler flags from the build log.
 
     build_log: an iterator of lines
-    Returns: (line_count, flags)
-    flags is a list, and line_count is an integer
+    Returns: (line_count, skip_count, flags)
+    flags is a list, and the counts are integers
     '''
 
     # Used to ignore entries which result in temporary files, or don't fully
     # compile the file
     temp_output = re.compile("(-x assembler)|(-o ([a-zA-Z0-9._].tmp))|(/dev/null)")
+    skip_count = 0
 
     # Flags we want:
     # -includes (-i, -I)
@@ -259,6 +260,7 @@ def parse_flags(build_log):
     # Process build log
     for line in build_log:
         if(temp_output.search(line)):
+            skip_count += 1
             continue
 
         line_count += 1
@@ -303,7 +305,7 @@ def parse_flags(build_log):
 
         flags.add("-D{}={}".format(name, values[0]))
 
-    return (line_count, sorted(flags))
+    return (line_count, skip_count, sorted(flags))
 
 
 def generate_conf(flags, config_file):
