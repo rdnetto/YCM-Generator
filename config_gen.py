@@ -249,6 +249,10 @@ def parse_flags(build_log):
     flags = set()
     line_count = 0
 
+    # macro definitions should be handled separately, so we can resolve duplicates
+    define_flags = dict()
+    define_regex = re.compile("-D([a-zA-Z0-9_]+)=(.*)")
+
     # Used to only bundle filenames with applicable arguments
     filename_flags = ["-o", "-I", "-isystem", "-include"]
 
@@ -262,6 +266,16 @@ def parse_flags(build_log):
 
         for (i, word) in enumerate(words):
             if(word[0] != '-' or not flags_whitelist.match(word)):
+                continue
+
+            # handle macro definitions
+            m = define_regex.match(word)
+            if(m):
+                if(m.group(1) not in define_flags):
+                    define_flags[m.group(1)] = [m.group(2)]
+                elif(m.group(2) not in define_flags[m.group(1)]):
+                    define_flags[m.group(1)].append(m.group(2))
+
                 continue
 
             # include arguments for this option, if there are any, as a tuple
@@ -280,6 +294,14 @@ def parse_flags(build_log):
             flags.remove(flag)
 
         flags.add(max(word_flags))
+
+    # Resolve duplicate macro definitions (always choose the last value for consistency)
+    for name, values in define_flags.iteritems():
+        if(len(values) > 1):
+            print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
+            values.sort()
+
+        flags.add("-D{}={}".format(name, values[0]))
 
     return (line_count, sorted(flags))
 
