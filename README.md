@@ -40,6 +40,15 @@ The script is currently supported under Unices (Linux, BSD, OS X) only.
 Implementing Windows support consists of porting the contents of ```fake-toolchain/Unix```.
 If you are interested in implementing/testing this, please open a pull request.
 
+### Test Cases
+The following projects are used for testing:
+
+| Project                                                                   | Build system      | Notes  |
+| ------------------------------------------------------------------------- | ----------------- | ------ |
+| [Linux kernel](https://git.kernel.org)                                    | Kbuild (Make)     |        |
+| [Vim-qt](https://rdnetto@bitbucket.org/equalsraf/vim-qt.git)              | Autotools         |        |
+| [Clementine](https://github.com/clementine-player/Clementine.git)         | Cmake             |        |
+
 ## License
 YCM-Generator is published under the GNU GPLv3.
 
