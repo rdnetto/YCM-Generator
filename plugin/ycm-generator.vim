@@ -10,7 +10,7 @@ function! s:GenerateConfig(fmt, flags)
     " Only append the working directory if the last option is a flag
     let l:split_flags = split(a:flags)
     if len(l:split_flags) == 0 || l:split_flags[-1] =~ "^-"
-        let l:cmd = l:cmd . " " . getcwd()
+        let l:cmd = l:cmd . " " . fnameescape(getcwd())
     endif
 
     execute l:cmd
