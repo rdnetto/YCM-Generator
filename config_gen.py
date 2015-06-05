@@ -163,7 +163,6 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     env_config = env.copy()
     env_config["YCM_CONFIG_GEN_CC_PASSTHROUGH"] = cc
     env_config["YCM_CONFIG_GEN_CXX_PASSTHROUGH"] = cxx
-    env_config["QMAKESPEC"] = "linux-clang"
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
@@ -224,6 +223,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         run([make_cmd, "clean"], env=env, **proc_opts)
 
         print("Running qmake...")
+        env_config["QMAKESPEC"] = "linux-clang"
         run(["qmake"] + configure_opts, env=env_config, **proc_opts)
 
         print("\nRunning make...")
