@@ -218,7 +218,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
     elif(glob.glob(os.path.join(project_dir, "*.pro"))):
-        # qmake
+        # QMake
         print("Preparing build directory...")
         run([make_cmd, "clean"], env=env, **proc_opts)
 
