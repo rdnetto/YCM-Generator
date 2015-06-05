@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import time
 import subprocess
+import glob
 
 
 # Default flags for make
@@ -162,6 +163,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     env_config = env.copy()
     env_config["YCM_CONFIG_GEN_CC_PASSTHROUGH"] = cc
     env_config["YCM_CONFIG_GEN_CXX_PASSTHROUGH"] = cxx
+    env_config["QMAKESPEC"] = "linux-clang"
 
     # use -i (ignore errors), since the makefile may include scripts which
     # depend upon the existence of various output files
@@ -215,6 +217,20 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
             shutil.rmtree(build_dir)
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
+
+    elif(glob.glob(os.path.join(project_dir, "*.pro"))):
+        # qmake
+        print("Preparing build directory...")
+        run([make_cmd, "clean"], env=env, **proc_opts)
+
+        print("Running qmake...")
+        run(["qmake"] + configure_opts, env=env_config, **proc_opts)
+
+        print("\nRunning make...")
+        run(make_args, env=env, **proc_opts)
+
+        print("\nCleaning up...")
+        run([make_cmd, "clean"], env=env, **proc_opts)
 
     elif(any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]])):
         # Make
