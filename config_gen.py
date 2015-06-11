@@ -178,7 +178,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
-        # Cmake
+        # cmake
         # run cmake in a temporary directory, then compile the project as usual
         build_dir = tempfile.mkdtemp()
         proc_opts["cwd"] = build_dir
@@ -194,7 +194,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         shutil.rmtree(build_dir)
 
     elif(os.path.exists(os.path.join(project_dir, "configure"))):
-        # Autotools
+        # autotools
         # perform build in-tree, since not all projects handle out-of-tree builds correctly
 
         if(out_of_tree):
@@ -218,7 +218,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
     elif(glob.glob(os.path.join(project_dir, "*.pro"))):
-        # QMake
+        # qmake
         print("Preparing build directory...")
         run([make_cmd, "clean"], env=env, **proc_opts)
 
@@ -233,7 +233,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         run([make_cmd, "clean"], env=env, **proc_opts)
 
     elif(any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]])):
-        # Make
+        # make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
         run([make_cmd, "clean"], env=env, **proc_opts)

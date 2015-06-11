@@ -19,10 +19,10 @@ YCM-Generator can also be used as a Vim plugin. Once installed with Vundle/NeoBu
     + Clang
 
 * Supported build systems:
-    + Make
-    + CMake
+    + make
+    + cmake
     + qmake
-    + Autotools
+    + autotools
 
 Your build system should support specifying the compiler through the ```CC```/```CXX``` environment variables, or not use an absolute path to the compiler.
 
