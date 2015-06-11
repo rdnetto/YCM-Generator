@@ -219,18 +219,28 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
 
     elif(glob.glob(os.path.join(project_dir, "*.pro"))):
         # qmake
-        print("Preparing build directory...")
-        run([make_cmd, "clean"], env=env, **proc_opts)
+        # find .pro files.
+        pro_files = glob.glob(os.path.join(project_dir, "*.pro"))
+        if len(pro_files) != 1:
+            print("ERROR: Found {} .pro files (expected one): {}.".format(
+                len(pro_files), ', '.join(pro_files)))
+            sys.exit(1)
 
-        print("Running qmake...")
+        # run qmake in a temporary directory, then compile the project as usual
+        build_dir = tempfile.mkdtemp()
+        proc_opts["cwd"] = build_dir
         env_config["QMAKESPEC"] = "linux-clang"
-        run(["qmake"] + configure_opts, env=env_config, **proc_opts)
+
+        print("Running qmake in '{}'...".format(build_dir))
+        run(["qmake"] + configure_opts + [pro_files[0]], env=env_config,
+            **proc_opts)
 
         print("\nRunning make...")
         run(make_args, env=env, **proc_opts)
 
         print("\nCleaning up...")
-        run([make_cmd, "clean"], env=env, **proc_opts)
+        print("")
+        shutil.rmtree(build_dir)
 
     elif(any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]])):
         # make
