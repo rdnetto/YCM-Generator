@@ -182,6 +182,17 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         build_dir = tempfile.mkdtemp()
         proc_opts["cwd"] = build_dir
 
+        # if the project was built in-tree, we need to hide the cache file so that cmake
+        # populates the build dir instead of just re-generating the existing files
+        cache_path = os.path.join(project_dir, "CMakeCache.txt")
+
+        if(os.path.exists(cache_path)):
+            fd, cache_tmp = tempfile.mkstemp()
+            os.close(fd)
+            shutil.move(cache_path, cache_tmp)
+        else:
+            cache_tmp = None
+
         print("Running cmake in '{}'...".format(build_dir))
         run(["cmake", project_dir] + configure_opts, env=env_config, **proc_opts)
 
@@ -191,6 +202,9 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         print("\nCleaning up...")
         print("")
         shutil.rmtree(build_dir)
+
+        if(cache_tmp):
+            shutil.move(cache_tmp, cache_path)
 
     elif(os.path.exists(os.path.join(project_dir, "configure"))):
         # Autotools
