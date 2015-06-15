@@ -170,6 +170,9 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     # depend upon the existence of various output files
     make_args = [make_cmd] + make_flags
 
+    # Used for the qmake build system below
+    pro_files = glob.glob(os.path.join(project_dir, "*.pro"))
+
     # sanity check - make sure the toolchain is available
     assert os.path.exists(fake_path), "Could not find toolchain at '{}'".format(fake_path)
 
@@ -219,10 +222,9 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
-    elif(glob.glob(os.path.join(project_dir, "*.pro"))):
+    elif(pro_files):
         # qmake
         # find .pro files.
-        pro_files = glob.glob(os.path.join(project_dir, "*.pro"))
         if len(pro_files) != 1:
             print("ERROR: Found {} .pro files (expected one): {}.".format(
                 len(pro_files), ', '.join(pro_files)))
