@@ -233,12 +233,8 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         # run qmake in a temporary directory, then compile the project as usual
         build_dir = tempfile.mkdtemp()
         proc_opts["cwd"] = build_dir
-        if qt_version == "4":
-            env_config["QMAKESPEC"] = "unsupported/linux-clang"
-            env_config["QT_SELECT"] = "4"
-        else:
-            env_config["QMAKESPEC"] = "linux-clang"
-            env_config["QT_SELECT"] = "5"
+        env_config["QT_SELECT"] = qt_version
+        env_config["QMAKESPEC"] = "unsupported/linux-clang" if qt_version == "4" else "linux-clang"
 
         print("Running qmake in '{}'...".format(build_dir))
         run(["qmake"] + configure_opts + [pro_files[0]], env=env_config,
