@@ -24,9 +24,10 @@ You can also invoke it from within Vim using the ```:YcmGenerateConfig``` or ```
     + Clang
 
 * Supported build systems:
-    + Make
-    + CMake
-    + Autotools
+    + make
+    + cmake
+    + qmake
+    + autotools
 
 Your build system should support specifying the compiler through the ```CC```/```CXX``` environment variables, or not use an absolute path to the compiler.
 

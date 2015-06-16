@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import time
 import subprocess
+import glob
 
 
 # Default flags for make
@@ -30,6 +31,7 @@ def main():
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT. Default: .ycm_extra_conf.py, or .color_coded if --format=cc.")
     parser.add_argument("-x", "--language", choices=["c", "c++"], help="Only output flags for the given language. This defaults to whichever language has its compiler invoked the most.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
+    parser.add_argument("--qt-version", choices=["4", "5"], default="5", help="Use the given Qt version for qmake. (Default: 5)")
     parser.add_argument("-e", "--preserve-environment", action="store_true", help="Pass environment variables to build processes.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
@@ -122,7 +124,7 @@ def main():
             print("Created {} config file with {} {} flags".format(output_format.upper(), len(flags), lang.upper()))
 
 
-def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment):
+def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment, qt_version):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
@@ -135,6 +137,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     configure_opts: additional flags for configure stage
     make_flags: additional flags for make
     preserve_environment: pass environment variables to build processes
+    qt_version: The Qt version to use when building with qmake.
     '''
 
     # TODO: add Windows support
@@ -167,6 +170,9 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     # depend upon the existence of various output files
     make_args = [make_cmd] + make_flags
 
+    # Used for the qmake build system below
+    pro_files = glob.glob(os.path.join(project_dir, "*.pro"))
+
     # sanity check - make sure the toolchain is available
     assert os.path.exists(fake_path), "Could not find toolchain at '{}'".format(fake_path)
 
@@ -177,7 +183,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
 
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
-        # Cmake
+        # cmake
         # run cmake in a temporary directory, then compile the project as usual
         build_dir = tempfile.mkdtemp()
         proc_opts["cwd"] = build_dir
@@ -207,7 +213,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
             shutil.move(cache_tmp, cache_path)
 
     elif(os.path.exists(os.path.join(project_dir, "configure"))):
-        # Autotools
+        # autotools
         # perform build in-tree, since not all projects handle out-of-tree builds correctly
 
         if(out_of_tree):
@@ -230,8 +236,33 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
+    elif(pro_files):
+        # qmake
+        # make sure there is only one .pro file
+        if len(pro_files) != 1:
+            print("ERROR: Found {} .pro files (expected one): {}.".format(
+                len(pro_files), ', '.join(pro_files)))
+            sys.exit(1)
+
+        # run qmake in a temporary directory, then compile the project as usual
+        build_dir = tempfile.mkdtemp()
+        proc_opts["cwd"] = build_dir
+        env_config["QT_SELECT"] = qt_version
+        env_config["QMAKESPEC"] = "unsupported/linux-clang" if qt_version == "4" else "linux-clang"
+
+        print("Running qmake in '{}' with Qt {}...".format(build_dir, qt_version))
+        run(["qmake"] + configure_opts + [pro_files[0]], env=env_config,
+            **proc_opts)
+
+        print("\nRunning make...")
+        run(make_args, env=env, **proc_opts)
+
+        print("\nCleaning up...")
+        print("")
+        shutil.rmtree(build_dir)
+
     elif(any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]])):
-        # Make
+        # make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
         run([make_cmd, "clean"], env=env, **proc_opts)
