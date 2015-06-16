@@ -31,7 +31,7 @@ def main():
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT. Default: .ycm_extra_conf.py, or .color_coded if --format=cc.")
     parser.add_argument("-x", "--language", choices=["c", "c++"], help="Only output flags for the given language. This defaults to whichever language has its compiler invoked the most.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
-    parser.add_argument("--qt-version", choices=["4", "5"], default="5", help="Use the given Qt version.")
+    parser.add_argument("--qt-version", choices=["4", "5"], default="5", help="Use the given Qt version for qmake. (Default: 5)")
     parser.add_argument("-e", "--preserve-environment", action="store_true", help="Pass environment variables to build processes.")
     parser.add_argument("PROJECT_DIR", help="The root directory of the project.")
     args = vars(parser.parse_args())
@@ -224,7 +224,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
 
     elif(pro_files):
         # qmake
-        # find .pro files.
+        # make sure there is only one .pro file
         if len(pro_files) != 1:
             print("ERROR: Found {} .pro files (expected one): {}.".format(
                 len(pro_files), ', '.join(pro_files)))
@@ -236,7 +236,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         env_config["QT_SELECT"] = qt_version
         env_config["QMAKESPEC"] = "unsupported/linux-clang" if qt_version == "4" else "linux-clang"
 
-        print("Running qmake in '{}'...".format(build_dir))
+        print("Running qmake in '{}' with Qt {}...".format(build_dir, qt_version))
         run(["qmake"] + configure_opts + [pro_files[0]], env=env_config,
             **proc_opts)
 
