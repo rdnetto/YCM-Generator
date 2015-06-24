@@ -36,15 +36,18 @@ Some flags present in the resulting configuration file may be mutually exclusive
 ## Documentation & Support
 * run ```./config_gen.py --help``` to see the complete list of supported options.
 * if you receive the error message ```ERROR: No commands were logged to the build logs```, try using the ```--verbose``` flag to see any error messages
+    + some build systems require certain environment variables to be set. Note that these will *not* be used by YCM-Generator by default, unless `--preserve-environment` is used
     + if you open an issue regarding this error message, please include the output when running with ```--verbose``` and a link to the project repo (if possible)
 
 ## Development
 Patches are welcome. Please submit pull requests against the ```develop``` branch.
 
 ### Windows support
-The script is currently supported under Unices (Linux, BSD, OS X) only.
+The script is currently supported under Unices (Linux, NixOS<sup>[1]</sup>, BSD, OS X) only.
 Implementing Windows support consists of porting the contents of ```fake-toolchain/Unix```.
 If you are interested in implementing/testing this, please open a pull request.
+
+<sup>[1]</sup> May require `--preserve-environment` - see [#19](https://github.com/rdnetto/YCM-Generator/issues/19)
 
 ### Test Cases
 The following projects are used for testing:
