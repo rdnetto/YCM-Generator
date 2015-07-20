@@ -51,7 +51,8 @@ def main():
         return 1
 
     try:
-        cxx = (args["compiler"] or "clang").replace("clang", "clang++")
+        h, t = os.path.split(args["compiler"] or "clang")
+        cxx = os.path.join(h, t.replace("clang", "clang++"))
         args["cxx"] = subprocess.check_output(["which", cxx]).strip()
     except subprocess.CalledProcessError:
         print("ERROR: Could not find clang++ at '{}'. Please make sure it is installed and specified appropriately.".format(cxx))
