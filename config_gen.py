@@ -18,6 +18,12 @@ import glob
 # Default flags for make
 default_make_flags = ["-i", "-j" + str(multiprocessing.cpu_count())]
 
+# Set YCM-Generator directory
+# Always obtain the real path to the directory where 'config_gen.py' lives as,
+# in some cases, it will be a symlink placed in '/usr/bin' (as is the case
+# with the Arch Linux AUR package) and it won't
+# be able to find the plugin directory.
+ycm_generator_dir = os.path.dirname(os.path.realpath(__file__))
 
 def main():
     # parse command-line args
@@ -143,7 +149,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
 
     # TODO: add Windows support
     assert(not sys.platform.startswith("win32"))
-    fake_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "fake-toolchain", "Unix"))
+    fake_path = os.path.join(ycm_generator_dir, "fake-toolchain", "Unix")
 
     # environment variables and arguments for build process
     started = time.time()
@@ -382,7 +388,7 @@ def generate_ycm_conf(flags, config_file):
     flags: the list of flags
     config_file: the path to save the configuration file at'''
 
-    template_file = os.path.join(os.path.dirname(__file__), "template.py")
+    template_file = os.path.join(ycm_generator_dir, "template.py")
 
     with open(template_file, "r") as template:
         with open(config_file, "w") as output:
