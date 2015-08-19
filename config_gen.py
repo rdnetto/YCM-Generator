@@ -341,11 +341,7 @@ def parse_flags(build_log):
 
             # include arguments for this option, if there are any, as a tuple
             if(i != len(words) - 1 and word in filename_flags and words[i + 1][0] != '-'):
-                if (word == "-imacros"):
-                    word += words[i + 1]
-                    flags.add(word)
-                else:
-                    flags.add((word, words[i + 1]))
+                flags.add((word, words[i + 1]))
             else:
                 flags.add(word)
 
