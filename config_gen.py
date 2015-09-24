@@ -25,6 +25,7 @@ default_make_flags = ["-i", "-j" + str(multiprocessing.cpu_count())]
 # be able to find the plugin directory.
 ycm_generator_dir = os.path.dirname(os.path.realpath(__file__))
 
+
 def main():
     # parse command-line args
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
@@ -161,7 +162,13 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     }
     proc_opts["cwd"] = project_dir
 
-    env = os.environ if preserve_environment else {}
+    if(preserve_environment):
+        env = os.environ
+    else:
+        # Preserve HOME, since Cmake needs it to find some packages and it's
+        # normally there anyway. See #26.
+        env = dict(map(lambda x: (x, os.environ[x]), ["HOME"]))
+
     env["PATH"]  = "{}:{}".format(fake_path, os.environ["PATH"])
     env["CC"] = "clang"
     env["CXX"] = "clang++"
