@@ -11,6 +11,8 @@ It is reasonably fast, taking ~10 seconds to generate a configuration file for t
 ## Installation
 Add ```NeoBundle 'rdnetto/YCM-Generator'``` to your vimrc (or the equivalent for your plugin manager).
 
+For [vim-plug](https://github.com/junegunn/vim-plug) users, add ```Plug 'rdnetto/YCM-Generator', { 'branch': 'stable'}``` to your vimrc.
+
 Alternatively, Arch Linux users can install YCM-Generator using the (unofficial) [AUR package](https://aur4.archlinux.org/packages/ycm-generator-git/).
 
 ## Usage
