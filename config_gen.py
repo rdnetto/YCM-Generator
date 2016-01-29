@@ -30,6 +30,7 @@ def main():
     # parse command-line args
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
+    parser.add_argument("-f", "--force", action="store_true", help="Overwrite the file if it exists.")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
     parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM. The executable for clang++ will be inferred from this.")
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
@@ -76,7 +77,7 @@ def main():
         "ycm": os.path.join(project_dir, ".ycm_extra_conf.py"),
     }[args["format"] if args["output"] is None else None]
 
-    if(os.path.exists(config_file)):
+    if(os.path.exists(config_file) and not args["force"]):
         print("'{}' already exists. Overwrite? [y/N] ".format(config_file)),
         response = sys.stdin.readline().strip().lower()
 
@@ -90,6 +91,7 @@ def main():
     force_lang = args.pop("language")
     output_format = args.pop("format")
     del args["compiler"]
+    del args["force"]
     del args["output"]
     del args["PROJECT_DIR"]
 
