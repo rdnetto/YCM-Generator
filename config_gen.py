@@ -216,13 +216,16 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
             cache_tmp = None
 
         print("Running cmake in '{}'...".format(build_dir))
+        sys.stdout.flush()
         run(["cmake", project_dir] + configure_opts, env=env_config, **proc_opts)
 
         print("\nRunning make...")
+        sys.stdout.flush()
         run(make_args, env=env, **proc_opts)
 
         print("\nCleaning up...")
         print("")
+        sys.stdout.flush()
         shutil.rmtree(build_dir)
 
         if(cache_tmp):
