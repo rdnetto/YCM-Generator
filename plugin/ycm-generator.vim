@@ -1,8 +1,8 @@
 
 let s:config_gen = expand("<sfile>:p:h:h") . "/config_gen.py"
 
-command! -nargs=? CCGenerateConfig call s:GenerateConfig("cc", "<args>")
-command! -nargs=? YcmGenerateConfig call s:GenerateConfig("ycm", "<args>")
+command! -nargs=? -complete=file_in_path CCGenerateConfig call s:GenerateConfig("cc", "<args>")
+command! -nargs=? -complete=file_in_path YcmGenerateConfig call s:GenerateConfig("ycm", "<args>")
 
 function! s:GenerateConfig(fmt, flags)
     let l:cmd = "! " . s:config_gen . " -F " . a:fmt . " " . a:flags
