@@ -35,6 +35,8 @@ Your build system should support specifying the compiler through the ```CC```/``
 
 Some flags present in the resulting configuration file may be mutually exclusive with each other - reading the generated file prior to use is recommended.
 
+The script assumes that executables with the names `clang` and `clang++` exist in your `PATH`. This has been known to cause issues under Ubuntu, where the C++ compiler may be called `clang++-3.6` (see #50).
+
 ## Documentation & Support
 * run ```./config_gen.py --help``` to see the complete list of supported options.
 * if you receive the error message ```ERROR: No commands were logged to the build logs```, try using the ```--verbose``` flag to see any error messages
