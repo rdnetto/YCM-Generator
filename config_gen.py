@@ -267,7 +267,16 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         build_dir = tempfile.mkdtemp()
         proc_opts["cwd"] = build_dir
         env_config["QT_SELECT"] = qt_version
-        env_config["QMAKESPEC"] = "unsupported/linux-clang" if qt_version == "4" else "linux-clang"
+
+        # QMAKESPEC is platform dependent - valid mkspecs are in
+        # /usr/share/qt4/mkspecs, /usr/lib64/qt5/mkspecs
+        env_config["QMAKESPEC"] = {
+            ("Linux",  True):   "unsupported/linux-clang",
+            ("Linux",  False):  "linux-clang",
+            ("Darwin", True):   "unsupported/macx-clang",
+            ("Darwin", False):  "macx-clang",
+            ("FreeBSD", False): "unsupported/freebsd-clang",
+        }[(os.uname()[0], qt_version == "4")]
 
         print("Running qmake in '{}' with Qt {}...".format(build_dir, qt_version))
         run(["qmake"] + configure_opts + [pro_files[0]], env=env_config,
