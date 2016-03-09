@@ -118,9 +118,14 @@ def main():
                 c_count = 0
 
             if(c_count == 0 and cxx_count == 0):
-                print()
+                print("")
                 print("ERROR: No commands were logged to the build logs (C: {}, C++: {}).".format(c_build_log.name, cxx_build_log.name))
                 print("Your build system may not be compatible.")
+
+                if(not args["verbose"]):
+                    print("")
+                    print("Try running with the --verbose flag to see build system output - the most common cause of this is a hardcoded compiler path.")
+
                 c_build_log.delete = False
                 cxx_build_log.delete = False
                 return 3
