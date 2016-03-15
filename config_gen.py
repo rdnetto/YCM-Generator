@@ -202,6 +202,25 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         print("$ " + " ".join(cmd))
         subprocess.call(cmd, *args, **kwargs)
 
+    # helper function to set CC and CXX variables correctly on OSX with qmake
+    def patch_qmake_makefile(makefile_path):
+        compilers = {
+            "CC": "clang",
+            "CXX": "clang++",
+            "LINK": "clang++"
+        }
+        patched_makefile_lines = []
+        with open(makefile_path, "r") as f:
+            for line in f:
+                line = line.rstrip()
+                for variable_name, compiler in compilers.items():
+                    if re.match("\s*{}\s*=".format(variable_name), line):
+                        line = re.sub("=.*", "= {}".format(compiler), line)
+                        break
+                patched_makefile_lines.append(line)
+        with open(makefile_path, "w") as f:
+            f.write("\n".join(patched_makefile_lines))
+
     # execute the build system
     if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
         # cmake
@@ -286,6 +305,8 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         print("Running qmake in '{}' with Qt {}...".format(build_dir, qt_version))
         run(["qmake"] + configure_opts + [pro_files[0]], env=env_config,
             **proc_opts)
+        if os.uname()[0] == "Darwin":
+            patch_qmake_makefile(os.path.join(build_dir, "Makefile"))
 
         print("\nRunning make...")
         run(make_args, env=env, **proc_opts)
