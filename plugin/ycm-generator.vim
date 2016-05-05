@@ -14,7 +14,7 @@ function! s:GenerateConfig(fmt, overwrite, flags)
     " Only append the working directory if the last option is a flag
     let l:split_flags = split(a:flags)
     if len(l:split_flags) == 0 || l:split_flags[-1] =~ "^-"
-        let l:cmd = l:cmd . " " . fnameescape(getcwd())
+        let l:cmd = l:cmd . " " . shellescape(getcwd())
     endif
 
     " Disable interactive prompts for consistency with Neovim
