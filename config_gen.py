@@ -212,9 +212,6 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
             build_system = "qmake"
         elif any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]]):
             build_system = "make"
-        else:
-            print("ERROR: Unknown build system")
-            sys.exit(2)
 
     # execute the build system
     if build_system == "cmake":
@@ -316,6 +313,10 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
 
         print("\nRunning make...")
         run(make_args, env=env, **proc_opts)
+
+    else:
+        print("ERROR: Unknown build system")
+        sys.exit(2)
 
     print("Build completed in {} sec".format(round(time.time() - started, 2)))
     print("")
