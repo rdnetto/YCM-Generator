@@ -32,6 +32,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-f", "--force", action="store_true", help="Overwrite the file if it exists.")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
+    parser.add_argument("-b", "--build-system", choices=["cmake", "autotools", "qmake", "make"], help="Force use of the specified build system rather than trying to autodetect.")
     parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM. The executable for clang++ will be inferred from this.")
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
     parser.add_argument("-F", "--format", choices=["ycm", "cc"], default="ycm", help="Format of output file (YouCompleteMe or color_coded). Default: ycm")
@@ -139,7 +140,7 @@ def main():
             print("Created {} config file with {} {} flags".format(output_format.upper(), len(flags), lang.upper()))
 
 
-def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment, qt_version):
+def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, build_system, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment, qt_version):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
@@ -202,8 +203,18 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         print("$ " + " ".join(cmd))
         subprocess.call(cmd, *args, **kwargs)
 
+    if build_system is None:
+        if os.path.exists(os.path.join(project_dir, "CMakeLists.txt")):
+            build_system = "cmake"
+        elif os.path.exists(os.path.join(project_dir, "configure")):
+            build_system = "autotools"
+        elif pro_files:
+            build_system = "qmake"
+        elif any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]]):
+            build_system = "make"
+
     # execute the build system
-    if(os.path.exists(os.path.join(project_dir, "CMakeLists.txt"))):
+    if build_system == "cmake":
         # cmake
         # run cmake in a temporary directory, then compile the project as usual
         build_dir = tempfile.mkdtemp()
@@ -236,7 +247,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         if(cache_tmp):
             shutil.move(cache_tmp, cache_path)
 
-    elif(os.path.exists(os.path.join(project_dir, "configure"))):
+    elif build_system == "autotools":
         # autotools
         # perform build in-tree, since not all projects handle out-of-tree builds correctly
 
@@ -260,7 +271,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         else:
             run([make_cmd, "maintainer-clean"], env=env, **proc_opts)
 
-    elif(pro_files):
+    elif build_system == "qmake":
         # qmake
         # make sure there is only one .pro file
         if len(pro_files) != 1:
@@ -294,7 +305,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         print("")
         shutil.rmtree(build_dir)
 
-    elif(any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]])):
+    elif build_system == "make":
         # make
         # needs to be handled last, since other build systems can generate Makefiles
         print("Preparing build directory...")
