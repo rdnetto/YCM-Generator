@@ -118,9 +118,14 @@ def main():
                 c_count = 0
 
             if(c_count == 0 and cxx_count == 0):
-                print()
+                print("")
                 print("ERROR: No commands were logged to the build logs (C: {}, C++: {}).".format(c_build_log.name, cxx_build_log.name))
                 print("Your build system may not be compatible.")
+
+                if(not args["verbose"]):
+                    print("")
+                    print("Try running with the --verbose flag to see build system output - the most common cause of this is a hardcoded compiler path.")
+
                 c_build_log.delete = False
                 cxx_build_log.delete = False
                 return 3
@@ -267,7 +272,16 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         build_dir = tempfile.mkdtemp()
         proc_opts["cwd"] = build_dir
         env_config["QT_SELECT"] = qt_version
-        env_config["QMAKESPEC"] = "unsupported/linux-clang" if qt_version == "4" else "linux-clang"
+
+        # QMAKESPEC is platform dependent - valid mkspecs are in
+        # /usr/share/qt4/mkspecs, /usr/lib64/qt5/mkspecs
+        env_config["QMAKESPEC"] = {
+            ("Linux",  True):   "unsupported/linux-clang",
+            ("Linux",  False):  "linux-clang",
+            ("Darwin", True):   "unsupported/macx-clang",
+            ("Darwin", False):  "macx-clang",
+            ("FreeBSD", False): "unsupported/freebsd-clang",
+        }[(os.uname()[0], qt_version == "4")]
 
         print("Running qmake in '{}' with Qt {}...".format(build_dir, qt_version))
         run(["qmake"] + configure_opts + [pro_files[0]], env=env_config,
@@ -287,6 +301,22 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         run([make_cmd, "clean"], env=env, **proc_opts)
 
         print("\nRunning make...")
+        run(make_args, env=env, **proc_opts)
+
+    elif(os.path.exists(os.path.join(project_dir, "Make/options"))):
+        print("Found OpenFOAM Make/options")
+
+        # OpenFOAM build system
+        make_args = ["wmake"]
+
+        # Since icpc could not find directory in which g++ resides,
+        # set environmental variables to gcc to make fake_build operate normally.
+
+        env['WM_COMPILER']='Gcc'
+        env['WM_CC']='gcc'
+        env['WM_CXX']='g++'
+
+        print("\nRunning wmake...")
         run(make_args, env=env, **proc_opts)
 
     else:
@@ -316,7 +346,7 @@ def parse_flags(build_log):
     # -warnings (-Werror), but no assembler, etc. flags (-Wa,-option)
     # -language (-std=gnu99) and standard library (-nostdlib)
     # -word size (-m64)
-    flags_whitelist = ["-[iID].*", "-W[^,]*", "-std=[a-z0-9+]+", "-(no)?std(lib|inc)", "-m[0-9]+"]
+    flags_whitelist = ["-[iIDF].*", "-W[^,]*", "-std=[a-z0-9+]+", "-(no)?std(lib|inc)", "-m[0-9]+"]
     flags_whitelist = re.compile("|".join(map("^{}$".format, flags_whitelist)))
     flags = set()
     line_count = 0
