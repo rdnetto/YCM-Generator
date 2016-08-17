@@ -314,6 +314,22 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
         print("\nRunning make...")
         run(make_args, env=env, **proc_opts)
 
+    elif(os.path.exists(os.path.join(project_dir, "Make/options"))):
+        print("Found OpenFOAM Make/options")
+
+        # OpenFOAM build system
+        make_args = ["wmake"]
+
+        # Since icpc could not find directory in which g++ resides,
+        # set environmental variables to gcc to make fake_build operate normally.
+
+        env['WM_COMPILER']='Gcc'
+        env['WM_CC']='gcc'
+        env['WM_CXX']='g++'
+
+        print("\nRunning wmake...")
+        run(make_args, env=env, **proc_opts)
+
     else:
         print("ERROR: Unknown build system")
         sys.exit(2)

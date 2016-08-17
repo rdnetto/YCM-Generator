@@ -59,9 +59,10 @@ The following projects are used for testing:
 | Project                                                                   | Build system      | Notes  |
 | ------------------------------------------------------------------------- | ----------------- | ------ |
 | [Linux kernel](https://git.kernel.org)                                    | Kbuild (Make)     |        |
-| [Vim-qt](https://rdnetto@bitbucket.org/equalsraf/vim-qt.git)              | Autotools         |        |
+| [Vim-qt](https://bitbucket.org/equalsraf/vim-qt.git)                      | Autotools         |        |
 | [Clementine](https://github.com/clementine-player/Clementine.git)         | Cmake             |        |
 | [ExtPlane](https://github.com/vranki/ExtPlane.git)                        | Qmake             | Should be tested with both versions of Qt. |
+| [OpenFOAM](https://github.com/OpenFOAM/OpenFOAM-3.0.x.git)                | wmake             |        |
 
 ## License
 YCM-Generator is published under the GNU GPLv3.
