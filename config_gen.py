@@ -326,7 +326,7 @@ def parse_flags(build_log):
     define_regex = re.compile("-D([a-zA-Z0-9_]+)=(.*)")
 
     # Used to only bundle filenames with applicable arguments
-    filename_flags = ["-o", "-I", "-isystem", "-include", "-imacros", "-isysroot"]
+    filename_flags = ["-o", "-I", "-isystem", "-iquote", "-include", "-imacros", "-isysroot"]
 
     # Process build log
     for line in build_log:
