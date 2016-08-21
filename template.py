@@ -53,7 +53,7 @@ if os.path.exists( compilation_database_folder ):
 else:
   database = None
 
-SOURCE_EXTENSIONS = [ '.cpp', '.cxx', '.cc', '.c', '.m', '.mm' ]
+SOURCE_EXTENSIONS = [ '.C', '.cpp', '.cxx', '.cc', '.c', '.m', '.mm' ]
 
 def DirectoryOfThisScript():
   return os.path.dirname( os.path.abspath( __file__ ) )
@@ -90,7 +90,7 @@ def MakeRelativePathsInFlagsAbsolute( flags, working_directory ):
 
 def IsHeaderFile( filename ):
   extension = os.path.splitext( filename )[ 1 ]
-  return extension in [ '.h', '.hxx', '.hpp', '.hh' ]
+  return extension in [ '.H', '.h', '.hxx', '.hpp', '.hh' ]
 
 
 def GetCompilationInfoForFile( filename ):
