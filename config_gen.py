@@ -467,11 +467,13 @@ def generate_ycm_conf(flags, config_file):
                         if sys.version_info[0] == 2:
                             if(isinstance(flag, basestring)):
                                 output.write("    '{}',\n".format(flag))
+                            else: # is tuple
+                                output.write("    '{}', '{}',\n".format(*flag))
                         elif sys.version_info[0] == 3:
                             if(isinstance(flag, str)):
                                 output.write("    '{}',\n".format(flag))
-                        else: # is tuple
-                            output.write("    '{}', '{}',\n".format(*flag))
+                            else: # is tuple
+                                output.write("    '{}', '{}',\n".format(*flag))
 
                 else:
                     # copy template
