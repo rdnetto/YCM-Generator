@@ -416,12 +416,20 @@ def parse_flags(build_log):
         flags.add(max(word_flags))
 
     # Resolve duplicate macro definitions (always choose the last value for consistency)
-    for name, values in define_flags.iteritems():
-        if(len(values) > 1):
-            print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
-            values.sort()
+    if sys.version_info[0] == 2:
+        for name, values in define_flags.iteritems():
+            if(len(values) > 1):
+                print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
+                values.sort()
 
-        flags.add("-D{}={}".format(name, values[0]))
+            flags.add("-D{}={}".format(name, values[0]))
+    elif sys.version_info[0] == 3:
+        for name, values in list(define_flags.items()):
+            if(len(values) > 1):
+                print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
+                values.sort()
+
+            flags.add("-D{}={}".format(name, values[0]))
 
     return (line_count, skip_count, sorted(flags))
 
