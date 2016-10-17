@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import sys
 import os
@@ -102,8 +102,8 @@ def main():
     }[output_format]
 
     # temporary files to hold build logs
-    with tempfile.NamedTemporaryFile(mode="rw") as c_build_log:
-        with tempfile.NamedTemporaryFile(mode="rw") as cxx_build_log:
+    with tempfile.NamedTemporaryFile(mode="r") as c_build_log:
+        with tempfile.NamedTemporaryFile(mode="r") as cxx_build_log:
             # perform the actual compilation of flags
             fake_build(project_dir, c_build_log.name, cxx_build_log.name, **args)
             (c_count, c_skip, c_flags) = parse_flags(c_build_log)
@@ -175,7 +175,10 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     else:
         # Preserve HOME, since Cmake needs it to find some packages and it's
         # normally there anyway. See #26.
-        env = dict(map(lambda x: (x, os.environ[x]), ["HOME"]))
+        if sys.version_info[0] == 2:
+            env = dict(map(lambda x: (x, os.environ[x]), ["HOME"]))
+        if sys.version_info[0] == 3:
+            env = dict([(x, os.environ[x]) for x in ["HOME"]])
 
     env["PATH"]  = "{}:{}".format(fake_path, os.environ["PATH"])
     env["CC"] = "clang"
@@ -401,7 +404,10 @@ def parse_flags(build_log):
     # Only specify one word size (the largest)
     # (Different sizes are used for different files in the linux kernel.)
     mRegex = re.compile("^-m[0-9]+$")
-    word_flags = list([f for f in flags if isinstance(f, basestring) and mRegex.match(f)])
+    if sys.version_info[0] == 2:
+        word_flags = list([f for f in flags if isinstance(f, basestring) and mRegex.match(f)])
+    elif sys.version_info[0] == 3:
+        word_flags = list([f for f in flags if isinstance(f, str) and mRegex.match(f)])
 
     if(len(word_flags) > 1):
         for flag in word_flags:
@@ -428,11 +434,18 @@ def generate_cc_conf(flags, config_file):
 
     with open(config_file, "w") as output:
         for flag in flags:
-            if(isinstance(flag, basestring)):
-                output.write(flag + "\n")
-            else: # is tuple
-                for f in flag:
-                    output.write(f + "\n")
+            if sys.version_info[0] == 2:
+                if(isinstance(flag, basestring)):
+                    output.write(flag + "\n")
+                else: # is tuple
+                    for f in flag:
+                        output.write(f + "\n")
+            elif sys.version_info[0] == 3:
+                if(isinstance(flag, str)):
+                    output.write(flag + "\n")
+                else: # is tuple
+                    for f in flag:
+                        output.write(f + "\n")
 
 
 def generate_ycm_conf(flags, config_file):
@@ -451,8 +464,12 @@ def generate_ycm_conf(flags, config_file):
                 if(line == "    # INSERT FLAGS HERE\n"):
                     # insert generated code
                     for flag in flags:
-                        if(isinstance(flag, basestring)):
-                            output.write("    '{}',\n".format(flag))
+                        if sys.version_info[0] == 2:
+                            if(isinstance(flag, basestring)):
+                                output.write("    '{}',\n".format(flag))
+                        elif sys.version_info[0] == 3:
+                            if(isinstance(flag, str)):
+                                output.write("    '{}',\n".format(flag))
                         else: # is tuple
                             output.write("    '{}', '{}',\n".format(*flag))
 
