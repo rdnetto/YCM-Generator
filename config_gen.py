@@ -102,8 +102,8 @@ def main():
     }[output_format]
 
     # temporary files to hold build logs
-    with tempfile.NamedTemporaryFile(mode="r") as c_build_log:
-        with tempfile.NamedTemporaryFile(mode="r") as cxx_build_log:
+    with tempfile.NamedTemporaryFile(mode="r+") as c_build_log:
+        with tempfile.NamedTemporaryFile(mode="r+") as cxx_build_log:
             # perform the actual compilation of flags
             fake_build(project_dir, c_build_log.name, cxx_build_log.name, **args)
             (c_count, c_skip, c_flags) = parse_flags(c_build_log)
