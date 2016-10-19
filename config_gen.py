@@ -25,6 +25,12 @@ default_make_flags = ["-i", "-j" + str(multiprocessing.cpu_count())]
 # be able to find the plugin directory.
 ycm_generator_dir = os.path.dirname(os.path.realpath(__file__))
 
+def isString(string):
+    if sys.version_info[0] == 2:
+        return isinstance(string, basestring)
+    elif sys.version_info[0] == 3:
+        return isinstance(string, str)
+
 
 def main():
     # parse command-line args
@@ -175,10 +181,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     else:
         # Preserve HOME, since Cmake needs it to find some packages and it's
         # normally there anyway. See #26.
-        if sys.version_info[0] == 2:
-            env = dict(map(lambda x: (x, os.environ[x]), ["HOME"]))
-        if sys.version_info[0] == 3:
-            env = dict([(x, os.environ[x]) for x in ["HOME"]])
+        env = { x: os.environ[x] for x in ["HOME"] }
 
     env["PATH"]  = "{}:{}".format(fake_path, os.environ["PATH"])
     env["CC"] = "clang"
@@ -404,10 +407,7 @@ def parse_flags(build_log):
     # Only specify one word size (the largest)
     # (Different sizes are used for different files in the linux kernel.)
     mRegex = re.compile("^-m[0-9]+$")
-    if sys.version_info[0] == 2:
-        word_flags = list([f for f in flags if isinstance(f, basestring) and mRegex.match(f)])
-    elif sys.version_info[0] == 3:
-        word_flags = list([f for f in flags if isinstance(f, str) and mRegex.match(f)])
+    word_flags = list([f for f in flags if isString(f) and mRegex.match(f)])
 
     if(len(word_flags) > 1):
         for flag in word_flags:
@@ -416,20 +416,12 @@ def parse_flags(build_log):
         flags.add(max(word_flags))
 
     # Resolve duplicate macro definitions (always choose the last value for consistency)
-    if sys.version_info[0] == 2:
-        for name, values in define_flags.iteritems():
-            if(len(values) > 1):
-                print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
-                values.sort()
+    for name, values in define_flags.items():
+        if(len(values) > 1):
+            print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
+            values.sort()
 
-            flags.add("-D{}={}".format(name, values[0]))
-    elif sys.version_info[0] == 3:
-        for name, values in define_flags.items():
-            if(len(values) > 1):
-                print("WARNING: {} distinct definitions of macro {} found".format(len(values), name))
-                values.sort()
-
-            flags.add("-D{}={}".format(name, values[0]))
+        flags.add("-D{}={}".format(name, values[0]))
 
     return (line_count, skip_count, sorted(flags))
 
@@ -442,19 +434,11 @@ def generate_cc_conf(flags, config_file):
 
     with open(config_file, "w") as output:
         for flag in flags:
-            if sys.version_info[0] == 2:
-                if(isinstance(flag, basestring)):
-                    output.write(flag + "\n")
-                else: # is tuple
-                    for f in flag:
-                        output.write(f + "\n")
-            elif sys.version_info[0] == 3:
-                if(isinstance(flag, str)):
-                    output.write(flag + "\n")
-                else: # is tuple
-                    for f in flag:
-                        output.write(f + "\n")
-
+            if(isString(flag)):
+                output.write(flag + "\n")
+            else: # is tuple
+                for f in flag:
+                    output.write(f + "\n")
 
 def generate_ycm_conf(flags, config_file):
     '''Generates the .ycm_extra_conf.py.
@@ -472,16 +456,10 @@ def generate_ycm_conf(flags, config_file):
                 if(line == "    # INSERT FLAGS HERE\n"):
                     # insert generated code
                     for flag in flags:
-                        if sys.version_info[0] == 2:
-                            if(isinstance(flag, basestring)):
-                                output.write("    '{}',\n".format(flag))
-                            else: # is tuple
-                                output.write("    '{}', '{}',\n".format(*flag))
-                        elif sys.version_info[0] == 3:
-                            if(isinstance(flag, str)):
-                                output.write("    '{}',\n".format(flag))
-                            else: # is tuple
-                                output.write("    '{}', '{}',\n".format(*flag))
+                        if(isString(flag)):
+                            output.write("    '{}',\n".format(flag))
+                        else: # is tuple
+                            output.write("    '{}', '{}',\n".format(*flag))
 
                 else:
                     # copy template
