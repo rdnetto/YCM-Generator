@@ -31,7 +31,6 @@ def isString(string):
     elif sys.version_info[0] == 3:
         return isinstance(string, str)
 
-
 def main():
     # parse command-line args
     parser = argparse.ArgumentParser(description="Automatically generates config files for YouCompleteMe")
