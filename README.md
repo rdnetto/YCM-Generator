@@ -13,7 +13,7 @@ Add ```NeoBundle 'rdnetto/YCM-Generator'``` to your vimrc (or the equivalent for
 
 For [vim-plug](https://github.com/junegunn/vim-plug) users, add ```Plug 'rdnetto/YCM-Generator', { 'branch': 'stable'}``` to your vimrc.
 
-Alternatively, Arch Linux users can install YCM-Generator using the (unofficial) [AUR package](https://aur4.archlinux.org/packages/ycm-generator-git/).
+Alternatively, Arch Linux users can install YCM-Generator using the (unofficial) [AUR package](https://aur.archlinux.org/packages/ycm-generator-git/).
 
 ## Usage
 Run ```./config_gen.py PROJECT_DIRECTORY```, where ```PROJECT_DIRECTORY``` is the root directory of your project's build system (i.e. the one containing the root Makefile, etc.)
