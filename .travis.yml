@@ -1,0 +1,15 @@
+language: python
+python:
+    - "2.7"
+    - "3.6"
+
+addons:
+    apt:
+        packages:
+            - clang
+
+script:
+    - python --version
+    - python config_gen.py --help
+    - env PYTHONPATH=mocks python template.py
+
