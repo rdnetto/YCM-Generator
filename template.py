@@ -28,6 +28,9 @@
 #
 # For more information, please refer to <http://unlicense.org/>
 
+# Needed because ur"" syntax is no longer supported
+from __future__ import unicode_literals
+
 import os
 import ycm_core
 import re
@@ -40,17 +43,18 @@ flags = [
 
 
 def LoadSystemIncludes():
-    regex = re.compile(ur'(?:\#include \<...\> search starts here\:)(?P<list>.*?)(?:End of search list)', re.DOTALL);
-    process = subprocess.Popen(['clang', '-v', '-E', '-x', 'c++', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE);
-    process_out, process_err = process.communicate('');
-    output = process_out + process_err;
-    includes = [];
+    regex = re.compile(r'(?:\#include \<...\> search starts here\:)(?P<list>.*?)(?:End of search list)', re.DOTALL)
+    process = subprocess.Popen(['clang', '-v', '-E', '-x', 'c++', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process_out, process_err = process.communicate('')
+    output = (process_out + process_err).decode("utf8")
+
+    includes = []
     for p in re.search(regex, output).group('list').split('\n'):
-        p = p.strip();
+        p = p.strip()
         if len(p) > 0 and p.find('(framework directory)') < 0:
-            includes.append('-isystem');
-            includes.append(p);
-    return includes;
+            includes.append('-isystem')
+            includes.append(p)
+    return includes
 
 # Set this to the absolute path to the folder (NOT the file!) containing the
 # compile_commands.json file to use that instead of 'flags'. See here for
@@ -70,8 +74,8 @@ else:
   database = None
 
 SOURCE_EXTENSIONS = [ '.C', '.cpp', '.cxx', '.cc', '.c', '.m', '.mm' ]
-systemIncludes = LoadSystemIncludes();
-flags = flags + systemIncludes;
+systemIncludes = LoadSystemIncludes()
+flags = flags + systemIncludes
 
 def DirectoryOfThisScript():
   return os.path.dirname( os.path.abspath( __file__ ) )
@@ -139,7 +143,7 @@ def FlagsForFile( filename, **kwargs ):
 
     final_flags = MakeRelativePathsInFlagsAbsolute(
       compilation_info.compiler_flags_,
-      compilation_info.compiler_working_dir_ ) + systemIncludes 
+      compilation_info.compiler_working_dir_ ) + systemIncludes
 
   else:
     relative_to = DirectoryOfThisScript()
