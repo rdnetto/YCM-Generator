@@ -1,4 +1,11 @@
 # YCM-Generator
+|                                                                                                                                  |                    |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| [![Build Status](https://travis-ci.org/rdnetto/YCM-Generator.svg?branch=stable)](https://travis-ci.org/rdnetto/YCM-Generator)    | Stable branch      |
+| [![Build Status](https://travis-ci.org/rdnetto/YCM-Generator.svg?branch=develop)](https://travis-ci.org/rdnetto/YCM-Generator)   | Development branch |
+
+## Introduction
+
 This is a script which generates a list of compiler flags from a project with an arbitrary build system. It can be used to:
 
 * generate a ```.ycm_extra_conf.py``` file for use with [YouCompleteMe](https://github.com/Valloric/YouCompleteMe)
