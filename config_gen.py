@@ -18,6 +18,9 @@ import glob
 # Default flags for make
 default_make_flags = ["-i", "-j" + str(multiprocessing.cpu_count())]
 
+# Default flags for ninja
+default_ninja_flags = ["-j" + str(multiprocessing.cpu_count())]
+
 # Set YCM-Generator directory
 # Always obtain the real path to the directory where 'config_gen.py' lives as,
 # in some cases, it will be a symlink placed in '/usr/bin' (as is the case
@@ -37,11 +40,12 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Show output from build process")
     parser.add_argument("-f", "--force", action="store_true", help="Overwrite the file if it exists.")
     parser.add_argument("-m", "--make", default="make", help="Use the specified executable for make.")
-    parser.add_argument("-b", "--build-system", choices=["cmake", "autotools", "qmake", "make"], help="Force use of the specified build system rather than trying to autodetect.")
+    parser.add_argument("-b", "--build-system", choices=["meson", "cmake", "autotools", "qmake", "make"], help="Force use of the specified build system rather than trying to autodetect.")
     parser.add_argument("-c", "--compiler", help="Use the specified executable for clang. It should be the same version as the libclang used by YCM. The executable for clang++ will be inferred from this.")
     parser.add_argument("-C", "--configure_opts", default="", help="Additional flags to pass to configure/cmake/etc. e.g. --configure_opts=\"--enable-FEATURE\"")
     parser.add_argument("-F", "--format", choices=["ycm", "cc"], default="ycm", help="Format of output file (YouCompleteMe or color_coded). Default: ycm")
     parser.add_argument("-M", "--make-flags", help="Flags to pass to make when fake-building. Default: -M=\"{}\"".format(" ".join(default_make_flags)))
+    parser.add_argument("-N", "--ninja-flags", help="Flags to pass to ninja when fake-building. Default: -N=\"{}\"".format(" ".join (default_ninja_flags)))
     parser.add_argument("-o", "--output", help="Save the config file as OUTPUT. Default: .ycm_extra_conf.py, or .color_coded if --format=cc.")
     parser.add_argument("-x", "--language", choices=["c", "c++"], help="Only output flags for the given language. This defaults to whichever language has its compiler invoked the most.")
     parser.add_argument("--out-of-tree", action="store_true", help="Build autotools projects out-of-tree. This is a no-op for other project types.")
@@ -92,8 +96,10 @@ def main():
 
     # command-line args to pass to fake_build() using kwargs
     args["make_cmd"] = args.pop("make")
+    args["ninja_cmd"] = "ninja"
     args["configure_opts"] = shlex.split(args["configure_opts"])
     args["make_flags"] = default_make_flags if args["make_flags"] is None else shlex.split(args["make_flags"])
+    args["ninja_flags"] = default_ninja_flags if args["ninja_flags"] is None else shlex.split(args["ninja_flags"])
     force_lang = args.pop("language")
     output_format = args.pop("format")
     del args["compiler"]
@@ -145,7 +151,7 @@ def main():
             print("Created {} config file with {} {} flags".format(output_format.upper(), len(flags), lang.upper()))
 
 
-def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, build_system, cc, cxx, out_of_tree, configure_opts, make_flags, preserve_environment, qt_version):
+def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_cmd, ninja_cmd, build_system, cc, cxx, out_of_tree, configure_opts, make_flags, ninja_flags, preserve_environment, qt_version):
     '''Builds the project using the fake toolchain, to collect the compiler flags.
 
     project_dir: the directory containing the source files
@@ -159,6 +165,7 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     make_flags: additional flags for make
     preserve_environment: pass environment variables to build processes
     qt_version: The Qt version to use when building with qmake.
+    ninja_cmd: The ninja command to use.
     '''
 
     # TODO: add Windows support
@@ -197,6 +204,8 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
     # depend upon the existence of various output files
     make_args = [make_cmd] + make_flags
 
+    ninja_args = [ninja_cmd] + ninja_flags
+    
     # Used for the qmake build system below
     pro_files = glob.glob(os.path.join(project_dir, "*.pro"))
 
@@ -215,6 +224,8 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
             build_system = "autotools"
         elif pro_files:
             build_system = "qmake"
+        elif os.path.exists(os.path.join(project_dir, "meson.build")):
+            build_system = "meson"
         elif any([os.path.exists(os.path.join(project_dir, x)) for x in ["GNUmakefile", "makefile", "Makefile"]]):
             build_system = "make"
 
@@ -308,6 +319,23 @@ def fake_build(project_dir, c_build_log_path, cxx_build_log_path, verbose, make_
 
         print("\nRunning make...")
         run(make_args, env=env, **proc_opts)
+
+        print("\nCleaning up...")
+        print("")
+        shutil.rmtree(build_dir)
+    
+    elif build_system == "meson":
+        # meson build system
+        build_dir = tempfile.mkdtemp()
+        proc_opts["cwd"] = build_dir
+        print("Configuring meson in '{}'...".format(build_dir))
+        
+        print("\nRunning meson...",project_dir)
+        run(["meson", project_dir], env=env_config, **proc_opts)
+
+        print("\nRunning ninja...")
+        print(project_dir)
+        run(ninja_args, env=env, **proc_opts)
 
         print("\nCleaning up...")
         print("")

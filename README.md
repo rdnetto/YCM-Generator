@@ -37,6 +37,7 @@ You can also invoke it from within Vim using the ```:YcmGenerateConfig``` or ```
     + cmake
     + qmake
     + autotools
+    + meson (Ninja)
 
 Your build system should support specifying the compiler through the ```CC```/```CXX``` environment variables, or not use an absolute path to the compiler.
 
@@ -70,6 +71,7 @@ The following projects are used for testing:
 | [Clementine](https://github.com/clementine-player/Clementine.git)         | Cmake             |        |
 | [ExtPlane](https://github.com/vranki/ExtPlane.git)                        | Qmake             | Should be tested with both versions of Qt. |
 | [OpenFOAM](https://github.com/OpenFOAM/OpenFOAM-3.0.x.git)                | wmake             |        |
+| [Nautilus](https://git.gnome.org/browse/nautilus                          | meson (Ninja)     |        |
 
 ## License
 YCM-Generator is published under the GNU GPLv3.
