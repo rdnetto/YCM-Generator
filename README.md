@@ -8,6 +8,9 @@ It works by building the project with a fake toolchain, which simply and filters
 
 It is reasonably fast, taking ~10 seconds to generate a configuration file for the Linux kernel.
 
+## Status
+This plugin is in maintenance mode. I am happy to merge PRs and triage bug reports, but am not actively working on it.
+
 ## Installation
 Add ```NeoBundle 'rdnetto/YCM-Generator'``` to your vimrc (or the equivalent for your plugin manager).
 
